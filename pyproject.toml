@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0", "selenium>=4.12.0", "requests>=2.31.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "antidetect"
+version = "1.0.0"
+authors = [
+    { name = "Alexey", email = "abelenkov2006@gmail.com" },
+]
+description = "The package for interacting with anti-detect browser APIs"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    'Development Status :: 5 - Production/Stable',
+    'Intended Audience :: Developers',
+    'Topic :: Software Development :: Build Tools',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3 :: Only',
+    'License :: OSI Approved :: Apache Software License',
+    'Operating System :: Microsoft :: Windows',
+    'Operating System :: MacOS'
+]
+
+[project.urls]
+source = "https://github.com/blnkoff/antidetect"
