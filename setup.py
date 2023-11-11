@@ -14,19 +14,19 @@ if os.path.isfile(requirement_path):
 
 setuptools.setup(
     version='1.0.0',
-    name='antidetect',
+    name='adspower',
     author='Alexey',
     author_email='abelenkov2006@gmail.com',
-    description='The package for interacting with anti-detect browser APIs',
-    keywords='antidetect, anti-detect, adspower, adspower-api',
+    description='The package for interacting with API of anti-detect browser AdsPower.',
+    keywords='adspower, adspower api',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://github.com/blnkoff/antidetect',
+    url='https://github.com/blnkoff/adspower',
     project_urls={
-        'Documentation': 'https://github.com/blnkoff/antidetect',
+        'Documentation': 'https://github.com/blnkoff/adspower',
         'Bug Reports':
         'https://github.com/blnkoff/antidetect/issues',
-        'Source Code': 'https://github.com/blnkoff/antidetect',
+        'Source Code': 'https://github.com/blnkoff/adspower',
     },
     packages=setuptools.find_packages(exclude=['tests']),
     classifiers=[
@@ -39,6 +39,6 @@ setuptools.setup(
         'Operating System :: Microsoft :: Windows',
         'Operating System :: MacOS'
     ],
-    python_requires='>=3.10',
+    python_requires='>=3.11',
     install_requires=install_requires
 )

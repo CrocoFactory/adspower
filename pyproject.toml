@@ -3,14 +3,14 @@ requires = ["setuptools>=61.0", "selenium>=4.12.0", "requests>=2.31.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "antidetect"
+name = "adspower"
 version = "1.0.0"
 authors = [
     { name = "Alexey", email = "abelenkov2006@gmail.com" },
 ]
-description = "The package for interacting with anti-detect browser APIs"
+description = "The package for interacting with API of anti-detect browser AdsPower."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 classifiers = [
     'Development Status :: 5 - Production/Stable',
     'Intended Audience :: Developers',
@@ -23,4 +23,4 @@ classifiers = [
 ]
 
 [project.urls]
-source = "https://github.com/blnkoff/antidetect"
+source = "https://github.com/blnkoff/adspower"
