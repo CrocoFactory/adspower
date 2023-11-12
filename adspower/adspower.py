@@ -1,5 +1,6 @@
 import time
 import requests
+from requests.exceptions import ConnectionError
 from .types import *
 from .exceptions import *
 from functools import wraps
@@ -23,7 +24,12 @@ class AdsPower:
         """
         self._driver = None
         self.__profile_id = profile_id
-        self.__api_url = f'http://local.adspower.net:{port}'
+        self.__api_url = (url := f'http://local.adspower.net:{port}')
+        try:
+            url += '/status'
+            requests.get(url=url)
+        except ConnectionError:
+            raise UnavailableAPI(port)
 
     def __enter__(self):
         driver = self.get_driver()

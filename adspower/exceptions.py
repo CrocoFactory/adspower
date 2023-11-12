@@ -75,3 +75,9 @@ class ExceededQPS(Exception):
     """Raised when amount of queries per second is exceeded"""
     def __init__(self):
         super().__init__("Too many request per second, please try later")
+
+
+class UnavailableAPI(Exception):
+    """Raised when API url specified with invalid port or AdsPower is not opened"""
+    def __init__(self, port: int):
+        super().__init__(f"Your API url is specified with invalid port or AdsPower is not opened. You provided port {port}")
