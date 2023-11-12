@@ -1,6 +1,7 @@
 import time
 import requests
-from requests.exceptions import ConnectionError
+from requests.exceptions import ConnectionError as RequestConnectionError, InvalidURL
+from urllib3.exceptions import MaxRetryError, NewConnectionError
 from .types import *
 from .exceptions import *
 from functools import wraps
@@ -21,15 +22,11 @@ class AdsPower:
     def __init__(self, profile_id: Optional[str] = None, port: int = 50325):
         """
         :param profile_id: ID of existed profile in AdsPower
+        :param port: The port of API
         """
         self._driver = None
         self.__profile_id = profile_id
-        self.__api_url = (url := f'http://local.adspower.net:{port}')
-        try:
-            url += '/status'
-            requests.get(url=url)
-        except ConnectionError:
-            raise UnavailableAPI(port)
+        self.__api_url = self._validate_api_url('http://local.adspower.net', port)
 
     def __enter__(self):
         driver = self.get_driver()
@@ -94,6 +91,17 @@ class AdsPower:
             else:
                 raise exception(response)
 
+    @staticmethod
+    def _validate_api_url(api_url: str, port: int) -> str:
+        url = f'{api_url}:{port}'
+        try:
+            status_url = url + '/status'
+            requests.get(url=status_url)
+        except (MaxRetryError, RequestConnectionError, NewConnectionError, ConnectionRefusedError, InvalidURL):
+            raise UnavailableAPI(port)
+        else:
+            return url
+
     @_wait_for_delay
     def get_driver(self, profile_id: Optional[str] = None) -> WebDriver:
         """
@@ -133,6 +141,7 @@ class AdsPower:
     def create_profile(
             cls,
             data: Optional[CreateProfileParams] = None,
+            port: int = 50325,
             *,
             group_id: Optional[int] = None,
             name: Optional[str] = None,
@@ -143,6 +152,7 @@ class AdsPower:
         Returns an instance of class referring to a new profile
 
         :param data: Keyword arguments as dictionary to create profile
+        :param port: The port of API
         :param name: The name of the account, no more than 100 characters
         :param group_id: The group ID corresponding to the group in which an account is to be created,
         :param user_proxy_config: Dictionary arguments to update a proxy
@@ -190,10 +200,12 @@ class AdsPower:
         :return: AdsPower
         """
         kwargs = locals()
+        del kwargs['port']
         del kwargs['data']
         del kwargs['cls']
 
-        api_url = 'http://local.adspower.net:50325'
+        api_url = cls._validate_api_url('http://local.adspower.net', port)
+
         url = api_url + '/api/v1/user/create'
 
         data = data or kwargs
@@ -206,12 +218,14 @@ class AdsPower:
         response = requests.post(url=url, json=data).json()
         cls._validate_response(ProfileCreationError, response)
 
-        return cls(response['data']['id'])
+        return cls(response['data']['id'], port)
 
-    @staticmethod
+    @classmethod
     @_wait_for_delay
     def query_group(
+            cls,
             params: Optional[QueryGroupParams] = None,
+            port: int = 50325,
             *,
             group_name: Optional[str] = None,
             profile_id: Optional[str] = None,
@@ -222,6 +236,7 @@ class AdsPower:
         params, excluding page_size, it returns a list of dictionaries, containing information about all groups
 
         :param params: Keyword arguments as dictionary to query groups
+        :param port: The port of API
         :param group_name: The group name corresponding to the group
         :param profile_id: ID of existed profile in AdsPower
         :param page_size: The maximum length of returning list. Default value - 100
@@ -240,9 +255,11 @@ class AdsPower:
             }
         """
         kwargs = locals()
+        del kwargs['cls']
         del kwargs['params']
+        del kwargs['port']
 
-        api_url = 'http://local.adspower.net:50325'
+        api_url = cls._validate_api_url('http://local.adspower.net', port)
         url = api_url + '/api/v1/group/list'
 
         params = params or kwargs
@@ -251,18 +268,20 @@ class AdsPower:
 
         if len(params) == 1:
             response = requests.get(url=url, params=params).json()
-            AdsPower._validate_response(GroupQueryError, response)
+            cls._validate_response(GroupQueryError, response)
             return response['data']['list']
         else:
             params['user_id'] = params.pop('profile_id')
             response = requests.get(url=url, params=params).json()
-            AdsPower._validate_response(GroupQueryError, response)
+            cls._validate_response(GroupQueryError, response)
             return response['data']['list'][0]
 
-    @staticmethod
+    @classmethod
     @_wait_for_delay
     def query_profiles(
+            cls,
             params: Optional[QueryProfilesParams] = None,
+            port: int = 50325,
             *,
             group_id: Optional[int] = None,
             page_size: Optional[int] = 100
@@ -271,6 +290,7 @@ class AdsPower:
         Returns a list consisting of dictionaries containing information about the profiles by specified parameters
 
         :param params: Keyword arguments as dictionary to query profiles
+        :param port: The port of API
         :param group_id: The group ID corresponding to the group in which an account is to be created,
         :param page_size: The maximum length of returning list. Default value - 100
 
@@ -286,9 +306,11 @@ class AdsPower:
             }
         """
         kwargs = locals()
+        del kwargs['cls']
         del kwargs['params']
+        del kwargs['port']
 
-        api_url = 'http://local.adspower.net:50325'
+        api_url = cls._validate_api_url('http://local.adspower.net', port)
         url = api_url + '/api/v1/user/list'
 
         params = params or kwargs
@@ -297,7 +319,7 @@ class AdsPower:
 
         response = requests.get(url=url, params=params).json()
 
-        AdsPower._validate_response(ProfileQueryError, response)
+        cls._validate_response(ProfileQueryError, response)
 
         return response['data']['list']
 
@@ -379,10 +401,11 @@ class AdsPower:
         AdsPower._validate_response(ProxyUpdateError, response)
 
     @_wait_for_delay
-    def update_user_agent(self, user_agent: str) -> None:
+    def update_user_agent(self, user_agent: str, profile_id: Optional[str] = None) -> None:
         """
         Updates user agent in current profile
 
+        :param profile_id: ID of existed profile in AdsPower
         :param user_agent: String containing user agent.
                            When customizing please make sure that ua format and content meet
                            the requirement.
@@ -394,8 +417,9 @@ class AdsPower:
             raise NoUserAgentFound
 
         user_agent = user_agent
+        profile_id = self.profile_id or profile_id
         data = {
-            'user_id': self.profile_id,
+            'user_id': profile_id,
             'fingerprint_config': {'ua': user_agent}
         }
         response = requests.post(url=url, json=data).json()
