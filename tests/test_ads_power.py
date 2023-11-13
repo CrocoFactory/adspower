@@ -8,7 +8,8 @@ def group_id():
 
 
 def test_create_profile(group_id):
-    assert AdsPower.create_profile(group_id=group_id)
+    profile = AdsPower.create_profile(group_id=group_id)
+    AdsPower.delete_profiles(profile.profile_id)
 
 
 def test_get_driver(group_id):

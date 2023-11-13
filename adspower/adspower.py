@@ -84,12 +84,12 @@ class AdsPower:
         return wrapper
 
     @staticmethod
-    def _validate_response(exception: Type[Exception], response: dict[str]):
+    def _validate_response(exception: Type[Exception], request: dict[str, Any], response: dict[str, Any]):
         if response['code'] != 0:
             if response['msg'] == 'Too many request per second, please check':
                 raise ExceededQPS
             else:
-                raise exception(response)
+                raise exception(request, response)
 
     @staticmethod
     def _validate_api_url(api_url: str, port: int) -> str:
@@ -122,7 +122,7 @@ class AdsPower:
         }
 
         response = requests.get(url=url, params=params).json()
-        AdsPower._validate_response(ProfileNotFound, response)
+        self._validate_response(ProfileNotFound, params, response)
 
         debugger_address = response['data']['ws']['selenium']
         chrome_driver = response['data']['webdriver']
@@ -216,9 +216,26 @@ class AdsPower:
             data['user_proxy_config'] = {'proxy_soft': 'no_proxy'}
 
         response = requests.post(url=url, json=data).json()
-        cls._validate_response(ProfileCreationError, response)
+        cls._validate_response(ProfileCreationError, data, response)
 
         return cls(response['data']['id'], port)
+
+    @classmethod
+    @_wait_for_delay
+    def delete_profiles(cls, profile_ids: str | list[str], port: int = 50325):
+        if not profile_ids:
+            raise NoProfileIdFound
+
+        api_url = cls._validate_api_url('http://local.adspower.net', port)
+        url = api_url + '/api/v1/user/delete'
+
+        if isinstance(profile_ids, str):
+            profile_ids = [profile_ids]
+
+        data = {'user_ids': profile_ids}
+
+        response = requests.post(url=url, json=data).json()
+        cls._validate_response(ProfileNotFound, data, response)
 
     @classmethod
     @_wait_for_delay
@@ -268,12 +285,12 @@ class AdsPower:
 
         if len(params) == 1:
             response = requests.get(url=url, params=params).json()
-            cls._validate_response(GroupQueryError, response)
+            cls._validate_response(GroupQueryError, params, response)
             return response['data']['list']
         else:
             params['user_id'] = params.pop('profile_id')
             response = requests.get(url=url, params=params).json()
-            cls._validate_response(GroupQueryError, response)
+            cls._validate_response(GroupQueryError, params, response)
             return response['data']['list'][0]
 
     @classmethod
@@ -319,7 +336,7 @@ class AdsPower:
 
         response = requests.get(url=url, params=params).json()
 
-        cls._validate_response(ProfileQueryError, response)
+        cls._validate_response(ProfileQueryError, params, response)
 
         return response['data']['list']
 
@@ -398,7 +415,7 @@ class AdsPower:
         }
 
         response = requests.post(url=url, json=data_to_send).json()
-        AdsPower._validate_response(ProxyUpdateError, response)
+        self._validate_response(ProxyUpdateError, data_to_send, response)
 
     @_wait_for_delay
     def update_user_agent(self, user_agent: str, profile_id: Optional[str] = None) -> None:
@@ -424,7 +441,7 @@ class AdsPower:
         }
         response = requests.post(url=url, json=data).json()
 
-        AdsPower._validate_response(UserAgentUpdateError, response)
+        self._validate_response(UserAgentUpdateError, data, response)
 
     def close_tabs(self) -> None:
         """

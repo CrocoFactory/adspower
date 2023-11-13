@@ -1,3 +1,6 @@
+from typing import Any
+
+
 class NoParamsFound(Exception):
     """Raised when params are not specified via positional arguments or keyword arguments"""
     def __init__(self):
@@ -6,44 +9,44 @@ class NoParamsFound(Exception):
 
 class ZeroResponse(Exception):
     """Raised if response is 0"""
-    def __init__(self, message: str, response: dict[str]):
-        super().__init__(f"{message}. Response: {response}")
+    def __init__(self, message: str, request: dict[str, Any], response: dict[str]):
+        super().__init__(f"{message}. \nRequest: {request}. \nResponse: {response}")
 
 
 class ProxyUpdateError(ZeroResponse):
     """Raised when proxy update is failed"""
-    def __init__(self, response: dict[str]):
-        super().__init__("The proxy update is failed", response)
+    def __init__(self, request: dict[str, Any], response: dict[str]):
+        super().__init__("The proxy update is failed", request, response)
 
 
 class UserAgentUpdateError(ZeroResponse):
     """Raised when user agent update is failed"""
-    def __init__(self, response: dict[str]):
-        super().__init__("The user agent update is failed", response)
+    def __init__(self, request: dict[str, Any], response: dict[str]):
+        super().__init__("The user agent update is failed", request, response)
 
 
 class ProfileCreationError(ZeroResponse):
     """Raised when profile creation is failed"""
-    def __init__(self, response: dict[str]):
-        super().__init__("The profile creation is failed", response)
+    def __init__(self, request: dict[str, Any], response: dict[str]):
+        super().__init__("The profile creation is failed", request, response)
 
 
 class GroupQueryError(ZeroResponse):
     """Raised when group query is failed"""
-    def __init__(self, response: dict[str]):
-        super().__init__("The group query is failed", response)
+    def __init__(self, request: dict[str, Any], response: dict[str]):
+        super().__init__("The group query is failed", request, response)
 
 
 class ProfileQueryError(ZeroResponse):
     """Raised when profile query is failed"""
-    def __init__(self, response: dict[str]):
-        super().__init__("The profile query is failed", response)
+    def __init__(self, request: dict[str, Any], response: dict[str]):
+        super().__init__("The profile query is failed", request, response)
 
 
 class ProfileNotFound(ZeroResponse):
-    """Raised when profile getting is failed"""
-    def __init__(self, response: dict[str]):
-        super().__init__("Profile getting is failed", response)
+    """Raised when profile getting or deleting is failed"""
+    def __init__(self, request: dict[str, Any], response: dict[str]):
+        super().__init__("Profile getting is failed", request, response)
 
 
 class NoGroupIdFound(Exception):
@@ -55,7 +58,7 @@ class NoGroupIdFound(Exception):
 class NoProfileIdFound(Exception):
     """Raised when profile id is not specified"""
     def __init__(self):
-        super().__init__("The id of a group isn't passed")
+        super().__init__("The id of a profile isn't passed")
 
 
 class NoUserAgentFound(Exception):
