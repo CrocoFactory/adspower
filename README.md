@@ -1,4 +1,4 @@
-# AdsPower
+# adspower
 
 [![Croco Logo](https://i.ibb.co/G5Pjt6M/logo.png)](https://t.me/crocofactory)
 
@@ -6,13 +6,12 @@
 The package for interacting with API of anti-detect browser AdsPower.
 
 - **[Telegram channel](https://t.me/crocofactory)**
-- **[Overview](#quick-overview)**
 - **[Bug reports](https://github.com/blnkoff/ether-wallet/issues)**
 
-AdsPower's source code is made available under the [MIT License](LICENSE)
+adspower's source code is made available under the [MIT License](LICENSE)
 
 # Quick start
-During using the packge, your anti-detect browser must be opened. For example, you can use driver by the following way.
+During using the package, your anti-detect browser must be opened. For example, you can use driver by the following way.
 
 ```python
 from adspower import AdsPower
@@ -24,8 +23,6 @@ with ads_power as driver:
 Here is example of usage of creating profiles from proxies
 
 ```python
-import json
-import time
 from adspower import AdsPower, CreateProfileParams, UserProxyConfig
 
 def create_profiles(config: dict[str], proxies) -> list[AdsPower]:
@@ -68,8 +65,8 @@ def retrieve_profiles(config: dict[str]):
     return profiles
 ```
 
-# Installing Antidetect
-To install the package you need to get github access token to package. After you need to replace this token insted of {TOKEN}:
+# Installing adspower
+To install the package you need a GitHub API Token. After you need to replace this token instead of {TOKEN}:
 ```sh
 pip install git+https:/{TOKEN}@github.com/blnkoff/appconnect.git
 ```

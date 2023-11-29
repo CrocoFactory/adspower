@@ -15,10 +15,6 @@ Usage example:
 
 __version__ = "1.0.0"
 
-__all__ = [
-    'AdsPower',
-]
-
 from .adspower import AdsPower
 from .types import (UserProxyConfig, FingerprintConfig, CreateProfileParams, QueryProfilesParams, QueryGroupParams,
                     GroupInfo, ProfileInfo)
