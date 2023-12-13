@@ -6,13 +6,18 @@
 The package for interacting with API of anti-detect browser AdsPower.
 
 - **[Telegram channel](https://t.me/crocofactory)**
-- **[Overview](#quick-overview)**
 - **[Bug reports](https://github.com/blnkoff/ether-wallet/issues)**
 
 adspower's source code is made available under the [MIT License](LICENSE)
+             
+# Restrictions
+1. During using the package, AdsPower must be opened. 
+2. The local API is available only in paid AdsPower subscriptions
+3. AdsPower has frequency control for all APIs, max. access frequency: 1 request/second 
 
 # Quick start
-During using the package, your anti-detect browser must be opened. For example, you can use driver by the following way.
+
+For example, you can use driver by the following way.
 
 ```python
 from adspower import AdsPower
@@ -67,7 +72,12 @@ def retrieve_profiles(config: dict[str]):
 ```
 
 # Installing adspower
-To install the package you need a GitHub API Token. After you need to replace this token instead of {TOKEN}:
+To install the package from GitHub you can use that:
 ```sh
-pip install git+https:/{TOKEN}@github.com/blnkoff/appconnect.git
+pip install git+https://github.com/blnkoff/adspower.git
+```
+
+To install the package from PyPi you can use that:
+```sh
+pip install adspower
 ```
