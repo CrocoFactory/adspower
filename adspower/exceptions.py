@@ -1,4 +1,5 @@
 from typing import Any
+from adspower.types import UpdatingProxyParams
 
 
 class NoParamsFound(Exception):
@@ -49,6 +50,12 @@ class ProfileNotFound(ZeroResponse):
         super().__init__("Profile getting is failed", request, response)
 
 
+class QuittingProfileError(ZeroResponse):
+    """Raised when quitting profile is failed."""
+    def __init__(self, request: dict[str, Any], response: dict[str]):
+        super().__init__("Quitting profile is failed. Profile can be already closed", request, response)
+
+
 class NoGroupIdFound(Exception):
     """Raised when group id is not specified"""
     def __init__(self):
@@ -67,11 +74,11 @@ class NoUserAgentFound(Exception):
         super().__init__("The user agent isn't passed")
 
 
-class NoProxyConfigFound(Exception):
-    """Raised when user agent is not specified"""
+class InvalidProxyConfig(Exception):
+    """Raised when proxy config is invalid"""
 
-    def __init__(self):
-        super().__init__("The proxy config isn't passed")
+    def __init__(self, proxy_config: dict[str] | UpdatingProxyParams):
+        super().__init__(f"The proxy config is invalid. Config: {proxy_config}")
 
 
 class ExceededQPS(Exception):

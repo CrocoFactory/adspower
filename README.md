@@ -6,6 +6,7 @@
 The package for interacting with API of anti-detect browser AdsPower.
 
 - **[Telegram channel](https://t.me/crocofactory)**
+- **[Overview](#quick-overview)**
 - **[Bug reports](https://github.com/blnkoff/ether-wallet/issues)**
 
 adspower's source code is made available under the [MIT License](LICENSE)
@@ -17,7 +18,7 @@ During using the package, your anti-detect browser must be opened. For example, 
 from adspower import AdsPower
 ads_power = AdsPower('ja54rwh')
 with ads_power as driver:
-  driver.get('https://github.com/blnkoff/antidetect')
+  driver.get('https://github.com/blnkoff/adspower')
 ```
 
 Here is example of usage of creating profiles from proxies
@@ -49,7 +50,7 @@ def create_profiles(config: dict[str], proxies) -> list[AdsPower]:
     return profiles
 ```
 
-Here is also example of retrieving profiles from AdsPower
+Here is example of retrieving profiles from AdsPower
 
 ```python
 from adspower import AdsPower

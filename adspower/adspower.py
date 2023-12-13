@@ -6,10 +6,11 @@ from .types import *
 from .exceptions import *
 from functools import wraps
 from selenium import webdriver
-from typing import Self, Optional, Any, Type
+from typing import Self, Optional, Any, Type, Iterable
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.webdriver import WebDriver
+from .utils import is_typed_dict
 
 _request_accessibility = 0
 
@@ -22,7 +23,7 @@ class AdsPower:
     def __init__(self, profile_id: Optional[str] = None, port: int = 50325):
         """
         :param profile_id: ID of existed profile in AdsPower
-        :param port: The port of API
+        :param port: The port of AdsPower's API
         """
         self._driver = None
         self.__profile_id = profile_id
@@ -42,14 +43,14 @@ class AdsPower:
     @property
     def driver(self) -> WebDriver | None:
         """
-        :return: str: The URL of API of an anti-detect browser
+        :return: The driver instance or None if get_driver() was not called
         """
         return self._driver
 
     @property
     def api_url(self) -> str:
         """
-        :return: str: The URL of API of an anti-detect browser
+        :return: The URL of API of an anti-detect browser
         """
         return self.__api_url
 
@@ -57,7 +58,7 @@ class AdsPower:
     def profile_id(self) -> str:
         """
         Returns ID of existed profile in anti-detect browser
-        :return: str
+        :return: The ID of existed profile in anti-detect
         """
         return self.__profile_id
 
@@ -107,7 +108,9 @@ class AdsPower:
         """
         Returns a driver associated with profile_id
 
-        :return: WebDriver
+        :raise ProfileNotFound: Raised when profile getting or deleting is failed
+        :raise NoProfileFound: Raised when profile ID is not specified
+        :return: A WebDriver instance associated with profile_id
         """
         profile_id = profile_id or self.profile_id
         if not profile_id:
@@ -158,6 +161,9 @@ class AdsPower:
         :param user_proxy_config: Dictionary arguments to update a proxy
         :param fingerprint_config: Dictionary arguments to update a fingerprint
 
+        :raise ProfileCreationError: Raised when profile creation is failed
+        :return: An AdsPower instance with the specified profile ID
+
         Request parameters
         ----------
             {
@@ -197,7 +203,6 @@ class AdsPower:
                         the requirement.
                 }
             }
-        :return: AdsPower
         """
         kwargs = locals()
         del kwargs['port']
@@ -222,7 +227,15 @@ class AdsPower:
 
     @classmethod
     @_wait_for_delay
-    def delete_profiles(cls, profile_ids: str | list[str], port: int = 50325):
+    def delete_profiles(cls, profile_ids: str | Iterable[str], port: int = 50325) -> None:
+        """
+        Deletes profiles associated with specified profile_ids in AdsPower
+        :param profile_ids: Iterable containing profile_ids or one profile ID
+        :param port: The port of AdsPower's API
+
+        :raise ProfileNotFound: Raised when a profile does not exist
+        :return: None
+        """
         if not profile_ids:
             raise NoProfileIdFound
 
@@ -231,6 +244,11 @@ class AdsPower:
 
         if isinstance(profile_ids, str):
             profile_ids = [profile_ids]
+        else:
+            profile_ids_ = []
+            for profile_id in profile_ids:
+                profile_ids_.append(profile_id)
+            profile_ids = profile_ids_
 
         data = {'user_ids': profile_ids}
 
@@ -253,12 +271,13 @@ class AdsPower:
         params, excluding page_size, it returns a list of dictionaries, containing information about all groups
 
         :param params: Keyword arguments as dictionary to query groups
-        :param port: The port of API
+        :param port: The port of AdsPower's API
         :param group_name: The group name corresponding to the group
         :param profile_id: ID of existed profile in AdsPower
         :param page_size: The maximum length of returning list. Default value - 100
 
-        :return: GroupResponse - list of dictionaries containing information about corresponding groups
+        :raise GroupQueryError: Raised when group query is failed
+        :return: List of dictionaries containing information about corresponding groups
 
         Request parameters
         ----------
@@ -307,10 +326,11 @@ class AdsPower:
         Returns a list consisting of dictionaries containing information about the profiles by specified parameters
 
         :param params: Keyword arguments as dictionary to query profiles
-        :param port: The port of API
+        :param port: The port of AdsPower's API
         :param group_id: The group ID corresponding to the group in which an account is to be created,
         :param page_size: The maximum length of returning list. Default value - 100
 
+        :raise ProfileQueryError: Raised when profile query is failed
         :return: list[dict[str, str]]: List of dictionaries containing information about corresponding profiles
 
         Request parameters
@@ -368,6 +388,8 @@ class AdsPower:
         :param proxy_user: The username of the proxy,
         :param proxy_password: The password of the proxy
 
+        :raise InvalidProxyConfig: Raised when proxy config is invalid
+        :raise ProxyUpdateError: Raised when proxy update is failed
         :return: None
 
         Request parameters
@@ -405,8 +427,8 @@ class AdsPower:
         if not data.get('profile_id'):
             data['profile_id'] = self.profile_id
 
-        if len(data) != 6:
-            raise NoProxyConfigFound
+        if not is_typed_dict(data, UpdatingProxyParams):
+            raise InvalidProxyConfig(data)
 
         profile_id = data.pop('profile_id')
         data_to_send = {
@@ -427,6 +449,8 @@ class AdsPower:
                            When customizing please make sure that ua format and content meet
                            the requirement.
 
+        :raise NoUserAgentFound: Raised when user agent is not specified
+        :raise UserAgentUpdateError: Raised when user agent update is failed
         :return: None
         """
         url = self.api_url + '/api/v1/user/update'
@@ -463,10 +487,12 @@ class AdsPower:
         """
         Closes current profile
 
+        :raise QuittingProfileError: Quitting profile is failed. Profile can be already closed
         :return: None
         """
         self.driver.quit()
         profile_id = self.profile_id
         url = self.api_url + '/api/v1/browser/stop'
         params = {'user_id': profile_id}
-        requests.get(url=url, params=params)
+        response = requests.get(url=url, params=params).json()
+        self._validate_response(QuittingProfileError, params, response)
