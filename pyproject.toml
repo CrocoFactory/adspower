@@ -10,7 +10,7 @@ homepage = 'https://github.com/blnkoff/adspower'
 classifiers = [
     'Development Status :: 5 - Production/Stable',
     'Intended Audience :: Developers',
-    'Topic :: Software Development :: Libraries :: Python Module',
+    'Topic :: Software Development :: Libraries :: Python Modules',
     'Programming Language :: Python :: 3.11',
     'Programming Language :: Python :: 3 :: Only',
     'License :: OSI Approved :: MIT License',
