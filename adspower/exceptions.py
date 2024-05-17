@@ -1,93 +1,73 @@
 from typing import Any
-from adspower.types import UpdatingProxyParams
+from httpx import ConnectError, RequestError, Request
+
+from adspower import ProxyConfig
 
 
-class NoParamsFound(Exception):
-    """Raised when params are not specified via positional arguments or keyword arguments"""
+class ZeroResponseError(RequestError):
+    """Raised if response code is 0"""
+
+    def __init__(self, message: str, request: Request, response: dict[str, Any]):
+        super().__init__(f"{message}. Response: {response}", request=request)
+        self.__response = response
+
+    @property
+    def response(self) -> dict[str, Any]:
+        return self.__response
+
+
+class ExceededQPSError(ConnectionRefusedError):
+    """Raised when amount of queries per second is exceeded"""
+
     def __init__(self):
-        super().__init__("Params are not specified via positional arguments or keyword arguments")
+        super().__init__("Too many request per second, please try later")
 
 
-class ZeroResponse(Exception):
-    """Raised if response is 0"""
-    def __init__(self, message: str, request: dict[str, Any], response: dict[str]):
-        super().__init__(f"{message}. \nRequest: {request}. \nResponse: {response}")
+class InternalAPIError(RequestError):
+    """Raised when an internal API error is encountered"""
+
+    def __init__(self, request: Request, response: dict[str, Any]):
+        super().__init__(f'The internal API error is encountered. Response: {response}', request=request)
+        self.__response = response
+
+    @property
+    def response(self) -> dict[str, Any]:
+        return self.__response
 
 
-class ProxyUpdateError(ZeroResponse):
-    """Raised when proxy update is failed"""
-    def __init__(self, request: dict[str, Any], response: dict[str]):
-        super().__init__("The proxy update is failed", request, response)
+class UnavailableAPIError(ConnectError):
+    """Raised when API url specified with invalid port or AdsPower is not opened"""
+
+    def __init__(self, port: int):
+        super().__init__(f"API url is specified with invalid port or AdsPower is not opened. Port is {port}")
+        self.__port = port
+
+    @property
+    def port(self) -> Any:
+        return self.__port
 
 
-class UserAgentUpdateError(ZeroResponse):
-    """Raised when user agent update is failed"""
-    def __init__(self, request: dict[str, Any], response: dict[str]):
-        super().__init__("The user agent update is failed", request, response)
+class APIRefusedError(ConnectionRefusedError):
+    """Raised when user have no paid subscription to use API"""
 
-
-class ProfileCreationError(ZeroResponse):
-    """Raised when profile creation is failed"""
-    def __init__(self, request: dict[str, Any], response: dict[str]):
-        super().__init__("The profile creation is failed", request, response)
-
-
-class GroupQueryError(ZeroResponse):
-    """Raised when group query is failed"""
-    def __init__(self, request: dict[str, Any], response: dict[str]):
-        super().__init__("The group query is failed", request, response)
-
-
-class ProfileQueryError(ZeroResponse):
-    """Raised when profile query is failed"""
-    def __init__(self, request: dict[str, Any], response: dict[str]):
-        super().__init__("The profile query is failed", request, response)
-
-
-class ProfileNotFound(ZeroResponse):
-    """Raised when profile getting or deleting is failed"""
-    def __init__(self, request: dict[str, Any], response: dict[str]):
-        super().__init__("Profile getting is failed", request, response)
-
-
-class QuittingProfileError(ZeroResponse):
-    """Raised when quitting profile is failed."""
-    def __init__(self, request: dict[str, Any], response: dict[str]):
-        super().__init__("Quitting profile is failed. Profile can be already closed", request, response)
-
-
-class NoGroupIdFound(Exception):
-    """Raised when group id is not specified"""
     def __init__(self):
-        super().__init__("The id of a group isn't passed")
+        super().__init__("Local API is only available in paid subscriptions")
 
 
-class NoProfileIdFound(Exception):
-    """Raised when profile id is not specified"""
-    def __init__(self):
-        super().__init__("The id of a profile isn't passed")
+class InvalidPortError(TypeError):
+    """Raised when port is not represented as an integer between 1 and 65535"""
 
+    def __init__(self, port: Any):
+        super().__init__(f"Port must be a number between 1 and 65535. You provided port {port}")
+        self.__port = port
 
-class NoUserAgentFound(Exception):
-    """Raised when user agent is not specified"""
-    def __init__(self):
-        super().__init__("The user agent isn't passed")
+    @property
+    def port(self) -> Any:
+        return self.__port
 
 
 class InvalidProxyConfig(Exception):
     """Raised when proxy config is invalid"""
 
-    def __init__(self, proxy_config: dict[str] | UpdatingProxyParams):
+    def __init__(self, proxy_config: ProxyConfig):
         super().__init__(f"The proxy config is invalid. Config: {proxy_config}")
-
-
-class ExceededQPS(Exception):
-    """Raised when amount of queries per second is exceeded"""
-    def __init__(self):
-        super().__init__("Too many request per second, please try later")
-
-
-class UnavailableAPI(Exception):
-    """Raised when API url specified with invalid port or AdsPower is not opened"""
-    def __init__(self, port: int):
-        super().__init__(f"Your API url is specified with invalid port or AdsPower is not opened. You provided port {port}")

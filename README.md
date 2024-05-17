@@ -1,83 +1,203 @@
 # adspower
 
-[![Croco Logo](https://i.ibb.co/G5Pjt6M/logo.png)](https://t.me/crocofactory)
+[![Croco Logo](https://i.ibb.co/G5Pjt6M/logo.png)](https://t.me/crocofactory) <a href="https://www.adspower.com"><img height="35" src="https://www.adspower.com/dist/logo_global.png"></a>
 
-
-The package for interacting with API of anti-detect browser AdsPower.
+The package for interacting with API of anti-detect browser [AdsPower](https://www.adspower.com).
 
 - **[Telegram channel](https://t.me/crocofactory)**
-- **[Bug reports](https://github.com/blnkoff/ether-wallet/issues)**
+- **[Overview](#quick-start)**
+- **[Installing](#installing-adspower)**
+- **[Bug reports](https://github.com/blnkoff/adspower/issues)**
 
 adspower's source code is made available under the [MIT License](LICENSE)
-             
-# Restrictions
+         
+## Features
+- Synchronous and asynchronous interaction with the local API
+- Interaction with the most popular libraries for browser automation in Python: Selenium and Playwright
+
+## Restrictions
 1. During using the package, AdsPower must be opened. 
 2. The local API is available only in paid AdsPower subscriptions
 3. AdsPower has frequency control for all APIs, max. access frequency: 1 request/second 
 
-# Quick start
 
-For example, you can use driver by the following way.
+```flow
+st=>start: Login
+op=>operation: Login operation
+cond=>condition: Successful Yes or No?
+e=>end: To admin
 
-```python
-from adspower import AdsPower
-ads_power = AdsPower('ja54rwh')
-with ads_power as driver:
-  driver.get('https://github.com/blnkoff/adspower')
+st->op->cond
+cond(yes)->e
+cond(no)->op
 ```
 
-Here is example of usage of creating profiles from proxies
+## Quick start
+
+*Example of interacting with synchronous API.*
 
 ```python
-from adspower import AdsPower, CreateProfileParams, UserProxyConfig
+from adspower.sync_api import Group, ProfileAPI
+group = Group.create(name='my_group', remark='The best group ever')
 
-def create_profiles(config: dict[str], proxies) -> list[AdsPower]:
-    group_name = config['ads_power']['group_name']
-
-    group_id = AdsPower.query_group(group_name=group_name)[0]['group_id']
-
-    data_set = []
-    for proxy in proxies:
-        proxy_config = UserProxyConfig(
-            proxy_soft='other',
-            proxy_type=proxy.type,
-            proxy_host=proxy.host,
-            proxy_port=proxy.port,
-            proxy_user=proxy.login,
-            proxy_password=proxy.password
-        )
-        data_set.append(CreateProfileParams(group_id=group_id, user_proxy_config=proxy_config))
-
-    profiles = []
-    for data in data_set:
-        profiles.append(AdsPower.create_profile(data))
-
-    return profiles
+profile_api = ProfileAPI.create(group=group)  
+print(f'Profile {profile_api.name} was created in group {group.name}')
 ```
 
-Here is example of retrieving profiles from AdsPower
+**Use `ProfileAPI` only when** you don't need `Selenium` and `Playwright` interactions.
+
+Library provides ways to interact the most popular libraries for browser automation in Python: `Selenium` and `Playwright`.
+To get a browser, you can use `with` statement:
+
+- *Selenium*
 
 ```python
-from adspower import AdsPower
+from adspower.sync_api.selenium import Profile, Group
+my_group = Group.query(name='my_group')[0]
+profile = Profile.create(group=my_group, name='my_profile')
 
-def retrieve_profiles(config: dict[str]):
-    group_name = config['ads_power']['group_name']
+with profile as browser:
+   browser.get('https://github.com/blnkoff/adspower')
+```
 
-    group_id = AdsPower.query_group(group_name=group_name)['group_id']
+- *Playwright*
 
-    response = AdsPower.query_profiles(group_id=group_id)
+```python
+from adspower.async_api.playwright import Profile, Group
+my_group = Group.query(name='my_group')[0]
+profile = Profile.create(group=my_group, name='my_profile')
 
-    profiles = [AdsPower(profile['user_id']) for profile in response]
-    return profiles
+async with profile as browser:
+   page = browser.pages[0]
+   page.goto('https://github.com/blnkoff/adspower')
+```
+
+Both versions support sync and async API.
+
+Or manually call `get_browser` if you need specify part of behaviour.
+```python
+from adspower.sync_api.selenium import Profile, Group
+
+my_group = Group.query(name='my_group')[0]
+profile = Profile.create(group=my_group, name='my_profile')
+browser = profile.get_browser(ip_tab=False, headless=True, disable_password_filling=True)
+browser.get('https://github.com/blnkoff/adspower')
+profile.quit()
+```
+
+Notice that you must not call quitting methods of `Playwright` library or `Selenium` after `profile.quit()`, since 
+it calls these methods automatically. An attempt to do so will lead to the error.
+           
+*Example of setting proxy and fingerprint*
+
+```python
+from adspower.sync_api.playwright import Profile, Group
+from adspower import ProxyConfig, FingerprintConfig
+
+proxy = ProxyConfig(
+    soft='other',
+    type='http',
+    host='xx.xx.x.xx',
+    port=1000,
+    user='username',
+    password='password'
+)
+
+fingerprint = FingerprintConfig(
+    ua='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.112 Safari/537.36'
+)
+
+group = Group.query(name='my_group')[0]
+profile = Profile.create(group=group, proxy_config=proxy, name='my_profile', fingerprint_config=fingerprint)
+```
+
+There are extension categories, implemented as `Category` class. At the moment, it can`t be created, but can be retrieved.
+You can manually create extension category and used it for profile creation using API.
+  
+*Example of querying category* 
+
+```python
+from adspower.sync_api.playwright import Profile, Category, Group
+
+category = Category.query(name='my_category')[0]
+group = Group.query(name='my_group')[0]
+
+profile = Profile.create(group=group, category=category)
+```
+
+You can create anonymous profile that is deleted after last statement in context manager.
+   
+*Example of anonymous profile*
+```python
+from adspower.sync_api.playwright import Profile, Group
+
+group = Group.query()[0]
+
+with Profile.anonymous(group) as browser:
+    page = browser.pages[0]
+    page.goto('https://google.com/')
+```
+
+Each API entity, such as Profile, Group and Category, pretty formatted, can be compared and converted to dict
+     
+*Example 1*
+
+```python
+from adspower.sync_api.playwright import Category
+
+category = Category.query(name='my_category')[0]
+print(category) 
+```
+
+```markdown
+Category(id=10515; name=my_category)
+```
+  
+*Example 2*
+
+```python
+from adspower.sync_api.playwright import Profile, Group
+
+group = Group.query(name='my_group')[0]
+profile_created = Profile.create(group=group)
+
+profile_queried = Profile.query(id_=profile_created.id)
+print(profile_queried == profile_created)
+```
+
+```python
+True
+```
+
+*Example 3*
+```python
+from adspower.sync_api.playwright import Category
+
+category = Category.query(name='my_category')[0]
+print(category.to_dict())
+```
+
+```json
+{
+    "id": 10515, 
+    "name": "my_category", 
+    "remark": "category remark"
+}
 ```
 
 # Installing adspower
-To install the package from GitHub you can use that:
-```sh
-pip install git+https://github.com/blnkoff/adspower.git
-```
-
 To install the package from PyPi you can use that:
+
 ```sh
 pip install adspower
+```
+
+You will probably want to use the pacakge with `Selenium` or `Playwright`. You can install it as extra-package:
+
+```sh
+pip install adspower[playwright]
+```
+
+```sh
+pip install adspower[selenium]
 ```
