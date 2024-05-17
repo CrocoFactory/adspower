@@ -20,18 +20,6 @@ adspower's source code is made available under the [MIT License](LICENSE)
 2. The local API is available only in paid AdsPower subscriptions
 3. AdsPower has frequency control for all APIs, max. access frequency: 1 request/second 
 
-
-```flow
-st=>start: Login
-op=>operation: Login operation
-cond=>condition: Successful Yes or No?
-e=>end: To admin
-
-st->op->cond
-cond(yes)->e
-cond(no)->op
-```
-
 ## Quick start
 
 *Example of interacting with synchronous API.*
