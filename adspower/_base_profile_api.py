@@ -138,7 +138,6 @@ class _BaseProfileAPI(_APIEntity, ABC):
         }
 
         def handler(response: dict[str, Any]) -> list[Self]:
-            print(response)
             return cls.query(group=group, id_=response['id'])
 
         return args, handler
