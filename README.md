@@ -1,6 +1,6 @@
 # adspower
 
-[![Croco Logo](https://i.ibb.co/G5Pjt6M/logo.png)](https://t.me/crocofactory) <a href="https://www.adspower.com"><img height="35" src="https://www.adspower.com/dist/logo_global.png"></a>
+[![Croco Logo](https://i.ibb.co/G5Pjt6M/logo.png)](https://t.me/crocofactory)<a href="https://www.adspower.com"><img height="35" src="https://www.adspower.com/dist/logo_global.png"></a>
 
 The package for interacting with API of anti-detect browser [AdsPower](https://www.adspower.com).
 
@@ -19,6 +19,7 @@ adspower's source code is made available under the [MIT License](LICENSE)
 1. During using the package, AdsPower must be opened. 
 2. The local API is available only in paid AdsPower subscriptions
 3. AdsPower has frequency control for all APIs, max. access frequency: 1 request/second 
+
 
 ## Quick start
 
@@ -52,12 +53,14 @@ with profile as browser:
 
 ```python
 from adspower.async_api.playwright import Profile, Group
-my_group = Group.query(name='my_group')[0]
-profile = Profile.create(group=my_group, name='my_profile')
 
-async with profile as browser:
-   page = browser.pages[0]
-   page.goto('https://github.com/blnkoff/adspower')
+async def main() -> None:
+    my_group = (await Group.query(name='my_group'))[0]
+    profile = await Profile.create(group=my_group, name='my_profile')
+    
+    async with profile as browser:
+       page = browser.pages[0]
+       await page.goto('https://github.com/blnkoff/adspower')
 ```
 
 Both versions support sync and async API.
@@ -117,13 +120,15 @@ You can create anonymous profile that is deleted after last statement in context
    
 *Example of anonymous profile*
 ```python
-from adspower.sync_api.playwright import Profile, Group
+from adspower.async_api.playwright import Profile, Group
 
-group = Group.query()[0]
+async def main() -> None:
+    my_group = (await Group.query(name='my_group'))[0]
+    profile = await Profile.anonymous(group=my_group)
 
-with Profile.anonymous(group) as browser:
-    page = browser.pages[0]
-    page.goto('https://google.com/')
+    async with profile as browser:
+        page = browser.pages[0]
+        await page.goto('https://www.google.com')
 ```
 
 Each API entity, such as Profile, Group and Category, pretty formatted, can be compared and converted to dict

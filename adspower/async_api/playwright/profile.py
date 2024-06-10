@@ -67,7 +67,7 @@ class Profile(_BaseProfile):
 
     @classmethod
     async def anonymous(cls, group: Group) -> AsyncContextManager[BrowserContext]:
-        return await super().anonymous(group)
+        return super().anonymous(group)
 
     async def __aenter__(self) -> BrowserContext:
         return await super().__aenter__()
