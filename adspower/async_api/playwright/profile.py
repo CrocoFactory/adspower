@@ -114,10 +114,14 @@ class Profile(_BaseProfile):
             clear_cache_after_closing,
             enable_password_saving,
         )
+
         playwright = self.__playwright = (await async_playwright().start())
         browser_app = await playwright.chromium.connect_over_cdp(f'http://localhost:{response["debug_port"]}')
         self.__browser_app = browser_app
         browser = self._browser = browser_app.contexts[0]
+
+        if close_tabs:
+            await self.close_tabs()
 
         return browser
 

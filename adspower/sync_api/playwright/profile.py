@@ -119,6 +119,9 @@ class Profile(_BaseProfile):
         self.__browser_app = browser_app
         browser = self._browser = browser_app.contexts[0]
 
+        if close_tabs:
+            self.close_tabs()
+
         return browser
 
     def close_tabs(self) -> None:
