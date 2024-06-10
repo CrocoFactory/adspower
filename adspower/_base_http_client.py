@@ -15,8 +15,8 @@ class _BaseHTTPClient(ABC):
     _timeout = 5.0
 
     def __init__(self, port: int = 50325):
-        self.__port = port
-        self._api_url = f'http://local.adspower.net:{self.__port}'
+        self._port = port
+        self._api_url = f'http://local.adspower.net:{self._port}'
 
     @property
     def api_url(self) -> str:
@@ -71,7 +71,7 @@ class _BaseHTTPClient(ABC):
         :return: None
         """
         if 1 <= value <= 65535:
-            cls.__port = value
+            cls._port = value
             cls._api_url = f'http://local.adspower.net:{value}'
         else:
             raise InvalidPortError(value)
@@ -97,7 +97,7 @@ class _BaseHTTPClient(ABC):
 
     @property
     def port(self) -> int:
-        return self.__port
+        return self._port
 
     @_handle_request
     @_delay_request

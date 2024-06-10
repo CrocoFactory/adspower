@@ -53,7 +53,7 @@ class HTTPClient(Client, _BaseHTTPClient):
             try:
                 super().get('/status')
             except (MaxRetryError, ConnectError, NewConnectionError, ConnectionRefusedError, InvalidURL):
-                raise UnavailableAPIError(self.__port)
+                raise UnavailableAPIError(self._port)
             else:
                 response = func(self, *args, **kwargs)
                 HTTPClient._validate_response(response, kwargs['error_msg'])
