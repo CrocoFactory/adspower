@@ -88,8 +88,7 @@ class Profile(_BaseProfile):
             disable_password_filling: bool = False,
             clear_cache_after_closing: bool = False,
             enable_password_saving: bool = False,
-            close_tabs: bool = True,
-            start_maximized: bool = True
+            close_tabs: bool = True
     ) -> BrowserContext:
         """
         Get a BrowserContext connected to the profile
@@ -102,7 +101,6 @@ class Profile(_BaseProfile):
         :param clear_cache_after_closing: Whether to delete the cache after closing the browser
         :param enable_password_saving: Whether to allow password saving
         :param close_tabs: Whether to close all startup tabs
-        :param start_maximized: Whether to enable maximized window size at start
         :return: BrowserContext instance
         """
         response = await self._get_browser(

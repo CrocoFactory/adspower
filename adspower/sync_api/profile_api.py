@@ -196,7 +196,15 @@ class ProfileAPI(_BaseProfileAPI):
         :return: List of profiles
         """
         http_client = cls._client
-        args, handler = cls._query(group, id_, name, serial_number, user_sort, page, page_size)
+        args, handler = cls._query(
+            group,
+            id_,
+            name,
+            serial_number,
+            user_sort,
+            page,
+            page_size
+        )
 
         with http_client() as client:
             response = client.get(**args).json()['data']
@@ -227,7 +235,16 @@ class ProfileAPI(_BaseProfileAPI):
     ) -> BrowserResponse:
         http_client = self._client
 
-        args, handler = super()._get_browser(ip_tab, new_first_tab, launch_args)
+        args, handler = super()._get_browser(
+            ip_tab,
+            new_first_tab,
+            launch_args,
+            headless,
+            disable_password_filling,
+            clear_cache_after_closing,
+            enable_password_saving
+        )
+
         with http_client() as client:
             response = client.get(**args).json()['data']
 

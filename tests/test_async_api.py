@@ -6,6 +6,7 @@ from adspower.async_api.selenium import Profile as ProfileSelenium
 from adspower.async_api.playwright import Profile as ProfilePlaywright
 
 HTTPClient.set_delay(1.1)
+HTTPClient.set_timeout(30)
 ProfileType = ProfileSelenium | ProfilePlaywright
 
 
@@ -31,7 +32,7 @@ class TestCategory:
         assert len(categories) > 0
 
 
-@pytest.mark.parametrize('profile_cls', [ProfileSelenium, ProfilePlaywright])
+@pytest.mark.parametrize('profile_cls', [ProfilePlaywright, ProfileSelenium])
 class TestProfile:
     @pytest.fixture(scope="function")
     def make_profile(

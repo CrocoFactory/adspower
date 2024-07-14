@@ -37,8 +37,7 @@ class _BaseProfile(ProfileAPI, ABC):
             disable_password_filling: bool = False,
             clear_cache_after_closing: bool = False,
             enable_password_saving: bool = False,
-            close_tabs: bool = True,
-            start_maximized: bool = True
+            close_tabs: bool = True
     ):
         pass
 
