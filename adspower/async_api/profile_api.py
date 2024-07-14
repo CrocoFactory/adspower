@@ -144,13 +144,27 @@ class ProfileAPI(_BaseProfileAPI, ABC):
         :return: A Profile instance
         """
         http_client = cls._client
-        args, handler = cls._create(group,
-                                    name,
-                                    domain_name,
-                                    open_urls,
-                                    repeat_config,
-                                    username,
-                                    password)
+        args, handler = cls._create(
+            group,
+            name,
+            domain_name,
+            open_urls,
+            repeat_config,
+            username,
+            password,
+            fakey,
+            cookies,
+            ignore_cookie_error,
+            ip,
+            ip_country,
+            region,
+            city,
+            remark,
+            ip_checker,
+            category,
+            proxy_config,
+            fingerprint_config
+        )
 
         async with http_client() as client:
             response = (await client.post(**args)).json()['data']
@@ -182,7 +196,15 @@ class ProfileAPI(_BaseProfileAPI, ABC):
         :return: List of profiles
         """
         http_client = cls._client
-        args, handler = cls._query(group, id_, name, serial_number, user_sort, page, page_size)
+        args, handler = cls._query(
+            group,
+            id_,
+            name,
+            serial_number,
+            user_sort,
+            page,
+            page_size
+        )
 
         async with http_client() as client:
             response = (await client.get(**args)).json()['data']
@@ -213,7 +235,15 @@ class ProfileAPI(_BaseProfileAPI, ABC):
     ) -> BrowserResponse:
         http_client = self._client
 
-        args, handler = super()._get_browser(ip_tab, new_first_tab, launch_args)
+        args, handler = super()._get_browser(
+            ip_tab,
+            new_first_tab,
+            launch_args,
+            headless,
+            disable_password_filling,
+            clear_cache_after_closing,
+            enable_password_saving
+        )
         async with http_client() as client:
             response = (await client.get(**args)).json()['data']
 
@@ -262,9 +292,24 @@ class ProfileAPI(_BaseProfileAPI, ABC):
         :param fingerprint_config: Dictionary containing fingerprint info
         """
         http_client = self._client
-        args, handler = self._update(name, domain_name, open_urls, username, password, fakey, cookies,
-                                     ignore_cookie_error, ip, ip_country, region, city, remark, category,
-                                     proxy_config, fingerprint_config)
+        args, handler = self._update(
+            name,
+            domain_name,
+            open_urls,
+            username,
+            password,
+            fakey,
+            cookies,
+            ignore_cookie_error,
+            ip,
+            ip_country,
+            region,
+            city,
+            remark,
+            category,
+            proxy_config,
+            fingerprint_config
+        )
 
         async with http_client() as client:
             (await client.post(**args))

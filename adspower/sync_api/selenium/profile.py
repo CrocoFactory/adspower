@@ -124,11 +124,14 @@ class Profile(_BaseProfile):
         options.page_load_strategy = 'none'
         options.add_argument('--headless=new')
 
-        if start_maximized:
-            options.add_argument("--start-maximized")
+        if not headless:
+            options.add_argument('--headless=new')
 
         service = Service(executable_path=chrome_driver)
         browser = self._browser = WebDriver(service=service, options=options)
+
+        if start_maximized:
+            browser.maximize_window()
 
         if close_tabs:
             self.close_tabs()

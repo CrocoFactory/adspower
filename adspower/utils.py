@@ -1,3 +1,6 @@
+import ctypes
+import platform
+import subprocess
 from typing import TypeVar
 
 _KT = TypeVar('_KT')
@@ -34,3 +37,33 @@ def _is_float(__str: str) -> bool:
         return True
     except ValueError:
         return False
+
+
+def _get_screen_size() -> tuple[int, int]:
+    os_name = platform.system()
+    if os_name == "Windows":
+        h = ctypes.windll.user32.GetDC(0)
+        width = ctypes.windll.gdi32.GetDeviceCaps(h, 118)
+        height = ctypes.windll.gdi32.GetDeviceCaps(h, 117)
+        ctypes.windll.user32.ReleaseDC(0, h)
+        return width, height
+
+    elif os_name == "Darwin":
+        output = subprocess.run(['system_profiler', 'SPDisplaysDataType'], capture_output=True, text=True).stdout
+        for line in output.split('\n'):
+            if 'Resolution' in line:
+                parts = line.split()
+                width = int(parts[1])
+                height = int(parts[3])
+                return width, height
+
+    elif os_name == "Linux":
+        output = subprocess.run(['xrandr'], capture_output=True, text=True).stdout
+        for line in output.split('\n'):
+            if '*' in line:
+                resolution = line.split()[0]
+                width, height = map(int, resolution.split('x'))
+                return width, height
+
+    else:
+        raise NotImplementedError(f"OS {os_name} not supported")
