@@ -1,12 +1,12 @@
 [tool.poetry]
 name = 'adspower'
-version = '2.0.3'
+version = '2.0.3.post1'
 description = 'The package for interacting with API of anti-detect browser AdsPower.'
 authors = ['Alexey <axbelenkov@gmail.com>']
 license = 'MIT'
 readme = 'README.md'
-repository = 'https://github.com/blnkoff/adspower'
-homepage = 'https://github.com/blnkoff/adspower'
+repository = 'https://github.com/CrocoFactory/adspower'
+homepage = 'https://github.com/CrocoFactory/adspower'
 classifiers = [
     'Development Status :: 5 - Production/Stable',
     'Intended Audience :: Developers',
