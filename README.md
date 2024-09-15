@@ -1,6 +1,8 @@
 # adspower
-
-[![Croco Logo](https://i.ibb.co/G5Pjt6M/logo.png)](https://t.me/crocofactory) <a href="https://www.adspower.com"><img height="35" src="https://www.adspower.com/dist/logo_global.png"></a>
+                  
+<h1 align="center">
+<img src="https://raw.githubusercontent.com/CrocoFactory/adspower/main/branding/adspower/banner.png" width="300">
+</h1><br>
 
 [![PyPi Version](https://img.shields.io/pypi/v/adspower)](https://pypi.org/project/adspower/)
 [![PyPI Downloads](https://img.shields.io/pypi/dm/adspower?label=downloads)](https://pypi.org/project/adspower/)
@@ -11,10 +13,11 @@
 
 The package for interacting with API of anti-detect browser [AdsPower](https://www.adspower.com).
 
-- **[Telegram channel](https://t.me/crocofactory)**
 - **[Overview](#quick-start)**
 - **[Installing](#installing-adspower)**
 - **[Bug reports](https://github.com/blnkoff/adspower/issues)**
+
+The project is made by the **[Croco Factory](https://github.com/CrocoFactory)** team
 
 adspower's source code is made available under the [MIT License](LICENSE)
          
