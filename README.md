@@ -1,8 +1,6 @@
 # adspower
-                  
-<h1 align="center">
-<img src="https://raw.githubusercontent.com/CrocoFactory/adspower/main/branding/adspower/banner.png" width="300">
-</h1><br>
+                     
+<a href="https://www.adspower.com"><h1 align="center"><img src="https://raw.githubusercontent.com/CrocoFactory/adspower/main/branding/adspower/banner.png" width="300" style="border-radius:7px;"></h1><br></a>
 
 [![PyPi Version](https://img.shields.io/pypi/v/adspower)](https://pypi.org/project/adspower/)
 [![PyPI Downloads](https://img.shields.io/pypi/dm/adspower?label=downloads)](https://pypi.org/project/adspower/)
