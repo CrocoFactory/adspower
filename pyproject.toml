@@ -1,6 +1,6 @@
 [tool.poetry]
 name = 'adspower'
-version = '2.0.3.post1'
+version = '2.0.3.post2'
 description = 'The package for interacting with API of anti-detect browser AdsPower.'
 authors = ['Alexey <axbelenkov@gmail.com>']
 license = 'MIT'
