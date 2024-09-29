@@ -2,18 +2,15 @@
                      
 <a href="https://www.adspower.com"><h1 align="center"><img src="https://raw.githubusercontent.com/CrocoFactory/adspower/main/branding/adspower/banner.png" width="300" style="border-radius:7px;"></h1><br></a>
 
-[![PyPi Version](https://img.shields.io/pypi/v/adspower)](https://pypi.org/project/adspower/)
-[![PyPI Downloads](https://img.shields.io/pypi/dm/adspower?label=downloads)](https://pypi.org/project/adspower/)
-[![License](https://img.shields.io/github/license/blnkoff/adspower.svg)](https://pypi.org/project/adspower/)
-[![Last Commit](https://img.shields.io/github/last-commit/blnkoff/adspower.svg)](https://pypi.org/project/adspower/)
-[![Development Status](https://img.shields.io/pypi/status/adspower)](https://pypi.org/project/adspower/) 
+[![Python versions](https://img.shields.io/pypi/pyversions/adspower?color=%231D4DFF)](https://pypi.org/project/adspower/)
+[![PyPi Version](https://img.shields.io/pypi/v/adspower?color=%231D4DFF)](https://pypi.org/project/adspower/)
 
 
 The package for interacting with API of anti-detect browser [AdsPower](https://www.adspower.com).
 
 - **[Overview](#quick-start)**
 - **[Installing](#installing-adspower)**
-- **[Bug reports](https://github.com/blnkoff/adspower/issues)**
+- **[Bug reports](https://github.com/CrocoFactory/adspower/issues)**
 
 The project is made by the **[Croco Factory](https://github.com/CrocoFactory)** team
 
