@@ -1,9 +1,13 @@
-import pytest
 from typing import Callable, Coroutine
+
+import pytest
 from selenium.webdriver.chrome.webdriver import WebDriver
-from adspower.async_api import Group, Category, HTTPClient
-from adspower.async_api.selenium import Profile as ProfileSelenium
+
+from adspower.async_api import Category, Group, HTTPClient
 from adspower.async_api.playwright import Profile as ProfilePlaywright
+from adspower.async_api.selenium import Profile as ProfileSelenium
+
+pytestmark = pytest.mark.integration
 
 HTTPClient.set_delay(1.1)
 HTTPClient.set_timeout(30)

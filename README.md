@@ -1,201 +1,171 @@
-# adspower
-                     
-<a href="https://www.adspower.com"><h1 align="center"><img src="https://raw.githubusercontent.com/CrocoFactory/adspower/main/branding/adspower/banner.png" width="300" style="border-radius:7px;"></h1><br></a>
+# AdsPower Python SDK
 
-[![Python versions](https://img.shields.io/pypi/pyversions/adspower?color=%231D4DFF)](https://pypi.org/project/adspower/)
-[![PyPi Version](https://img.shields.io/pypi/v/adspower?color=%231D4DFF)](https://pypi.org/project/adspower/)
+Typed sync and async clients for the AdsPower Local API. Version 3 uses API V2
+for browser profiles, keeps V1 behind an explicit compatibility namespace, and
+supports local, Docker, and private remote deployments.
 
+## Requirements
 
-The package for interacting with API of anti-detect browser [AdsPower](https://www.adspower.com).
+- Python 3.10–3.15
+- AdsPower with Local API enabled for your account and installation
+- Optional Selenium 4.x or Playwright 1.x for browser attachment
 
-- **[Overview](#quick-start)**
-- **[Installing](#installing-adspower)**
-- **[Bug reports](https://github.com/CrocoFactory/adspower/issues)**
+AdsPower API availability and rate limits can vary by endpoint, application
+version, and account configuration. Check the official AdsPower documentation
+for current service-side requirements.
 
-The project is made by the **[Croco Factory](https://github.com/CrocoFactory)** team
+## Installation
 
-adspower's source code is made available under the [MIT License](LICENSE)
-         
-## Features
-- Synchronous and asynchronous interaction with the local API
-- Interaction with the most popular libraries for browser automation in Python: Selenium and Playwright
-
-## Restrictions
-1. During using the package, AdsPower must be opened. 
-2. The local API is available only in paid AdsPower subscriptions
-3. AdsPower has frequency control for all APIs, max. access frequency: 1 request/second 
-
+```bash
+pip install adspower
+pip install 'adspower[selenium]'
+pip install 'adspower[playwright]'
+pip install 'adspower[all]'
+```
 
 ## Quick start
 
-*Example of interacting with synchronous API.*
-
 ```python
-from adspower.sync_api import Group, ProfileAPI
-group = Group.create(name='my_group', remark='The best group ever')
+from adspower import AdsPowerClient
 
-profile_api = ProfileAPI.create(group=group)  
-print(f'Profile {profile_api.name} was created in group {group.name}')
+with AdsPowerClient(api_key="secret") as client:
+    profile = client.profiles.create(
+        name="example",
+        group_id="0",
+        fingerprint_config={"screen_resolution": "1920_1080"},
+    )
+    session = client.browsers.start(profile.id, headless=False)
+
+    with session.selenium() as driver:
+        driver.get("https://example.com")
 ```
 
-**Use `ProfileAPI` only when** you don't need `Selenium` and `Playwright` interactions.
+The default endpoint is `http://127.0.0.1:50325`. You can configure it directly
+or with environment variables:
 
-Library provides ways to interact the most popular libraries for browser automation in Python: `Selenium` and `Playwright`.
-To get a browser, you can use `with` statement:
-
-- *Selenium*
-
-```python
-from adspower.sync_api.selenium import Profile, Group
-my_group = Group.query(name='my_group')[0]
-profile = Profile.create(group=my_group, name='my_profile')
-
-with profile as browser:
-   browser.get('https://github.com/blnkoff/adspower')
+```bash
+export ADSPOWER_BASE_URL=http://host.docker.internal:50325
+export ADSPOWER_API_KEY=your-api-key
 ```
 
-- *Playwright*
+```python
+from adspower import AdsPowerClient
+
+client = AdsPowerClient(
+    base_url="http://192.168.1.20:50325",
+    api_key="secret",
+    timeout=60.0,
+)
+```
+
+API keys are sent as bearer tokens and are redacted from client representations.
+Do not expose a remote Local API port directly to the public internet; use a
+private network, VPN, and firewall controls.
+
+## Async usage
 
 ```python
-from adspower.async_api.playwright import Profile, Group
+import asyncio
+
+from adspower import AsyncAdsPowerClient
+
 
 async def main() -> None:
-    my_group = (await Group.query(name='my_group'))[0]
-    profile = await Profile.create(group=my_group, name='my_profile')
-    
-    async with profile as browser:
-       page = browser.pages[0]
-       await page.goto('https://github.com/blnkoff/adspower')
+    async with AsyncAdsPowerClient() as client:
+        profile = await client.profiles.get("profile-id")
+        session = await client.browsers.start(profile.id)
+
+        async with session.playwright() as browser:
+            context = browser.contexts[0]
+            page = context.pages[0]
+            await page.goto("https://example.com")
+
+
+asyncio.run(main())
 ```
 
-Both versions support sync and async API.
+The browser adapter disconnects before stopping the AdsPower profile. Cleanup is
+idempotent, and cleanup failures do not replace an exception raised by user code
+inside a context manager.
 
-Or manually call `get_browser` if you need specify part of behaviour.
+## Profile operations
+
 ```python
-from adspower.sync_api.selenium import Profile, Group
-
-my_group = Group.query(name='my_group')[0]
-profile = Profile.create(group=my_group, name='my_profile')
-browser = profile.get_browser(ip_tab=False, headless=True, disable_password_filling=True)
-browser.get('https://github.com/blnkoff/adspower')
-profile.quit()
+profiles = client.profiles.list(group_id="0", page=1, page_size=100)
+profile = client.profiles.get("profile-id")
+updated = client.profiles.update(profile.id, name="new-name")
+client.profiles.delete(profile.id)
 ```
 
-Notice that you must not call quitting methods of `Playwright` library or `Selenium` after `profile.quit()`, since 
-it calls these methods automatically. An attempt to do so will lead to the error.
-           
-*Example of setting proxy and fingerprint*
+Response parsing tolerates fields added by AdsPower. Known values are exposed as
+typed attributes and unknown values remain available through `profile.extra`.
+`user_proxy_config` is preserved on the profile model.
+
+Proxy provider names accept strings so new AdsPower providers do not require an
+SDK release. Known names are available through `ProxySoftware` for autocomplete.
 
 ```python
-from adspower.sync_api.playwright import Profile, Group
-from adspower import ProxyConfig, FingerprintConfig
+from adspower import ProxySoftware, ScreenResolution
 
-proxy = ProxyConfig(
-    soft='other',
-    type='http',
-    host='xx.xx.x.xx',
-    port=1000,
-    user='username',
-    password='password'
+profile = client.profiles.create(
+    name="configured",
+    group_id="0",
+    user_proxy_config={
+        "proxy_soft": ProxySoftware.OTHER.value,
+        "proxy_type": "http",
+        "proxy_host": "proxy.internal",
+        "proxy_port": "8080",
+    },
+    fingerprint_config={
+        "screen_resolution": ScreenResolution.fixed(1920, 1080),
+    },
 )
-
-fingerprint = FingerprintConfig(
-    ua='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.112 Safari/537.36'
-)
-
-group = Group.query(name='my_group')[0]
-profile = Profile.create(group=group, proxy_config=proxy, name='my_profile', fingerprint_config=fingerprint)
 ```
 
-There are extension categories, implemented as `Category` class. At the moment, it can`t be created, but can be retrieved.
-You can manually create extension category and used it for profile creation using API.
-  
-*Example of querying category* 
+AdsPower also accepts special screen-resolution values such as `random` and
+`none` where supported by its current API.
+
+## Browser automation
+
+`headless` is sent to AdsPower when starting a browser. It is not injected into
+Selenium options after attachment. Window maximization is opt-in and Selenium's
+default page-load strategy is preserved unless explicitly overridden.
 
 ```python
-from adspower.sync_api.playwright import Profile, Category, Group
+session = client.browsers.start("profile-id", headless=True)
 
-category = Category.query(name='my_category')[0]
-group = Group.query(name='my_group')[0]
-
-profile = Profile.create(group=group, category=category)
+with session.selenium(
+    start_maximized=False,
+    page_load_strategy="eager",
+) as driver:
+    ...
 ```
 
-You can create anonymous profile that is deleted after last statement in context manager.
-   
-*Example of anonymous profile*
-```python
-from adspower.async_api.playwright import Profile, Group
+Playwright connects to the exact CDP websocket returned by AdsPower. Selenium
+uses the returned debugger address and AdsPower-provided WebDriver path when
+present. Attach-only Playwright usage does not launch a bundled browser.
 
-async def main() -> None:
-    my_group = (await Group.query(name='my_group'))[0]
-    profile = await Profile.anonymous(group=my_group)
+## V1 compatibility
 
-    async with profile as browser:
-        page = browser.pages[0]
-        await page.goto('https://www.google.com')
-```
-
-Each API entity, such as Profile, Group and Category, pretty formatted, can be compared and converted to dict
-     
-*Example 1*
+V2 is the default in 3.x. V1 profile endpoints remain explicit:
 
 ```python
-from adspower.sync_api.playwright import Category
-
-category = Category.query(name='my_category')[0]
-print(category) 
+legacy_profile = client.v1.profiles.create(group_id="0", name="legacy")
+legacy_profiles = client.v1.profiles.list(group_id="0")
 ```
 
-```markdown
-Category(id=10515; name=my_category)
-```
-  
-*Example 2*
+The original module-level 2.x API remains importable for one migration cycle but
+is deprecated. New code should use `AdsPowerClient` or `AsyncAdsPowerClient`.
 
-```python
-from adspower.sync_api.playwright import Profile, Group
+## Documentation
 
-group = Group.query(name='my_group')[0]
-profile_created = Profile.create(group=group)
+- [Documentation index](docs/INDEX.md)
+- [Configuration and networking](docs/configuration.md)
+- [Profiles and browser sessions](docs/profiles-and-sessions.md)
+- [Automation adapters](docs/automation.md)
+- [Migrating from 2.x](docs/migration-2-to-3.md)
+- [Development and release checks](docs/development.md)
 
-profile_queried = Profile.query(id_=profile_created.id)
-print(profile_queried == profile_created)
-```
+## License
 
-```python
-True
-```
-
-*Example 3*
-```python
-from adspower.sync_api.playwright import Category
-
-category = Category.query(name='my_category')[0]
-print(category.to_dict())
-```
-
-```json
-{
-    "id": 10515, 
-    "name": "my_category", 
-    "remark": "category remark"
-}
-```
-
-# Installing adspower
-To install the package from PyPi you can use that:
-
-```sh
-pip install adspower
-```
-
-You will probably want to use the pacakge with `Selenium` or `Playwright`. You can install it as extra-package:
-
-```sh
-pip install adspower[playwright]
-```
-
-```sh
-pip install adspower[selenium]
-```
+MIT. See [LICENSE](LICENSE).

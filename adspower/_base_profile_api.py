@@ -1,11 +1,23 @@
-from datetime import datetime
-from typing import Optional, Self, Any
 from abc import ABC, abstractmethod
+from datetime import datetime
+from typing import Any, Optional
+
+from typing_extensions import Self
+
 from adspower._api_entity import _APIEntity
-from ._base_group import _BaseGroup as Group
+from adspower.types import (
+    Cookies,
+    FingerprintConfig,
+    HandlingTuple,
+    IpChecker,
+    ProfileInfo,
+    ProxyConfig,
+    RepeatConfigType,
+    UserSort,
+)
+
 from ._base_category import _BaseCategory as Category
-from adspower.types import (ProxyConfig, Cookies, FingerprintConfig, RepeatConfigType, ProfileInfo,
-                            UserSort, IpChecker, HandlingTuple)
+from ._base_group import _BaseGroup as Group
 from .exceptions import InvalidProxyConfig
 
 
@@ -359,7 +371,7 @@ class _BaseProfileAPI(_APIEntity, ABC):
                 }
                 return parsed_proxy
             except (KeyError, TypeError):
-                raise InvalidProxyConfig(proxy_config)
+                raise InvalidProxyConfig(proxy_config) from None
         else:
             return None
 

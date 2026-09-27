@@ -1,1 +1,1 @@
-from .profile import Profile, Group, Category
+from .profile import Category, Group, Profile

@@ -1,18 +1,26 @@
-"""
-adspower
-~~~~~~~~~~~~~~
-The package for interacting with anti-detect browser APIs.
-Author's github - https://github.com/blnkoff
+"""Modern sync and async clients for the AdsPower Local API."""
 
-Usage example:
-   >>> from adspower.sync_api.selenium import Profile, Group
-   >>> my_group = Group.query(name='my_group')[0]
-   >>> profile = Profile.create(group=my_group, name='my_profile')
-   >>>
-   >>> with profile as browser:
-   >>>      browser.get('https://github.com/blnkoff/adspower')
-:copyright: (c) 2023 by Alexey
-:license: Apache 2.0, see LICENSE for more details.
-"""
+from .async_client import AsyncAdsPowerClient, AsyncBrowserSession
+from .client import AdsPowerClient, BrowserSession
+from .config import ClientConfig
+from .models import BrowserConnection, Group, Profile, ProxySoftware, ScreenResolution
+from .rate_limit import RateLimit
+from .types import FingerprintConfig, ProxyConfig
 
-from adspower.types import FingerprintConfig, ProxyConfig
+__version__ = "3.0.0"
+
+__all__ = [
+    "AdsPowerClient",
+    "AsyncAdsPowerClient",
+    "AsyncBrowserSession",
+    "BrowserConnection",
+    "BrowserSession",
+    "ClientConfig",
+    "FingerprintConfig",
+    "Group",
+    "Profile",
+    "ProxyConfig",
+    "ProxySoftware",
+    "RateLimit",
+    "ScreenResolution",
+]

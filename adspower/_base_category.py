@@ -1,5 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Self, Optional, Any
+from typing import Any, Optional
+
+from typing_extensions import Self
+
 from adspower._api_entity import _APIEntity
 from adspower.types import CategoryInfo, HandlingTuple
 

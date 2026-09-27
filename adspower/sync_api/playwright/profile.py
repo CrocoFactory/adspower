@@ -1,9 +1,12 @@
 from datetime import datetime
-from typing import Optional, ContextManager
+from typing import ContextManager, Optional
+from urllib.parse import urlsplit
+
+from playwright.sync_api import Browser, BrowserContext, Playwright, sync_playwright
+
 from adspower.sync_api._base_profile import _BaseProfile
-from adspower.sync_api.group import Group
 from adspower.sync_api.category import Category
-from playwright.sync_api import sync_playwright, BrowserContext, Playwright, Browser
+from adspower.sync_api.group import Group
 from adspower.types import IpChecker
 
 
@@ -113,7 +116,10 @@ class Profile(_BaseProfile):
             enable_password_saving,
         )
         playwright = self.__playwright = sync_playwright().start()
-        browser_app = playwright.chromium.connect_over_cdp(f'http://localhost:{response["debug_port"]}')
+        endpoint = response.get('ws', {}).get('puppeteer')
+        if not endpoint:
+            endpoint = f'http://{urlsplit(self._client._base_url).hostname}:{response["debug_port"]}'
+        browser_app = playwright.chromium.connect_over_cdp(endpoint)
         self.__browser_app = browser_app
         browser = self._browser = browser_app.contexts[0]
 
@@ -139,12 +145,17 @@ class Profile(_BaseProfile):
         Quit the browser
         :return: None
         """
-        self._quit()
-
-        self._browser.close()
-        self.__browser_app.close()
-        self.__playwright.stop()
-
-        self._browser = None
-        self.__playwright = None
-        self.__browser_app = None
+        if self._browser is None and self.__browser_app is None and self.__playwright is None:
+            return
+        try:
+            if self.__browser_app is not None:
+                self.__browser_app.close()
+        finally:
+            try:
+                self._quit()
+            finally:
+                if self.__playwright is not None:
+                    self.__playwright.stop()
+                self._browser = None
+                self.__playwright = None
+                self.__browser_app = None

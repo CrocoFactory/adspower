@@ -1,0 +1,22 @@
+name: AdsPower integration
+
+on:
+  workflow_dispatch:
+
+jobs:
+  real-browser:
+    runs-on: [self-hosted, adspower]
+    timeout-minutes: 30
+    env:
+      ADSPOWER_INTEGRATION: "1"
+      ADSPOWER_BASE_URL: ${{ secrets.ADSPOWER_BASE_URL }}
+      ADSPOWER_API_KEY: ${{ secrets.ADSPOWER_API_KEY }}
+      ADSPOWER_TEST_PROFILE_ID: ${{ secrets.ADSPOWER_TEST_PROFILE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - run: pip install poetry
+      - run: poetry install --all-extras
+      - run: poetry run pytest -m integration -W error::ResourceWarning

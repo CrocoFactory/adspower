@@ -1,13 +1,24 @@
-from datetime import datetime
-from typing import Optional, ClassVar, Self, Any
 from abc import ABC, abstractmethod
-from .category import Category
-from .http_client import HTTPClient
-from .group import Group
+from datetime import datetime
+from typing import Any, ClassVar, Optional
+
+from typing_extensions import Self
+
 from adspower._base_profile_api import _BaseProfileAPI
-from adspower.types import (ProxyConfig, Cookies, FingerprintConfig, RepeatConfigType, BrowserResponse,
-                            UserSort, IpChecker)
+from adspower.types import (
+    BrowserResponse,
+    Cookies,
+    FingerprintConfig,
+    IpChecker,
+    ProxyConfig,
+    RepeatConfigType,
+    UserSort,
+)
 from adspower.utils import _convert_json
+
+from .category import Category
+from .group import Group
+from .http_client import HTTPClient
 
 
 class ProfileAPI(_BaseProfileAPI, ABC):
@@ -72,21 +83,27 @@ class ProfileAPI(_BaseProfileAPI, ABC):
 
     @staticmethod
     def _get_init_args(response: dict[str, Any]) -> dict[str, Any]:
-        response = _convert_json(response)
-
-        response['id_'] = response.pop('user_id')
-        response['category'] = Category(id_=id_, name=None, remark=None) if (id_ := response.pop('sys_app_cate_id')) else None
-
-        last_open_time = response['last_open_time']
-        response['created_time'] = datetime.fromtimestamp(response['created_time'])
-        response['last_open_time'] = datetime.fromtimestamp(last_open_time) if last_open_time else None
-        response['ip_checker'] = response.pop('ipchecker')
-
-        response['group'] = Group(id_=response.pop('group_id'), name=response.pop('group_name'), remark=None)
-
-        response.pop('fbcc_proxy_acc_id')
-
-        return response
+        data = _convert_json(dict(response))
+        category_id = data.get('sys_app_cate_id')
+        created = data.get('created_time') or 0
+        last_open = data.get('last_open_time')
+        return {
+            'id_': str(data.get('user_id') or data.get('profile_id')),
+            'serial_number': int(data.get('serial_number') or 0),
+            'name': data.get('name'),
+            'group': Group(id_=int(data.get('group_id') or 0), name=data.get('group_name') or '', remark=None),
+            'domain_name': data.get('domain_name'),
+            'username': data.get('username'),
+            'remark': data.get('remark'),
+            'created_time': datetime.fromtimestamp(created),
+            'category': Category(id_=int(category_id), name=None, remark=None) if category_id else None,
+            'ip': data.get('ip'),
+            'ip_country': data.get('ip_country'),
+            'ip_checker': data.get('ipchecker') or data.get('ip_checker') or 'ip2location',
+            'fakey': data.get('fakey'),
+            'password': data.get('password'),
+            'last_open_time': datetime.fromtimestamp(last_open) if last_open else None,
+        }
 
     @classmethod
     async def create(

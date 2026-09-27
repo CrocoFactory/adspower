@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Any
-from typing import Self
-from adspower.types import GroupInfo
+from typing import Any, Optional
+
+from typing_extensions import Self
+
 from adspower._api_entity import _APIEntity
-from adspower.types import HandlingTuple
+from adspower.types import GroupInfo, HandlingTuple
 from adspower.utils import _convert_json
 
 

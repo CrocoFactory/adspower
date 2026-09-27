@@ -1,5 +1,9 @@
-from typing import Self, Optional, ClassVar
+from typing import ClassVar, Optional
+
+from typing_extensions import Self
+
 from adspower._base_category import _BaseCategory
+
 from .http_client import HTTPClient
 
 

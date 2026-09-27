@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
-from typing import Optional, ContextManager
-from adspower.sync_api import ProfileAPI, Group
+from typing import ContextManager, Optional
+
+from adspower.sync_api import Group, ProfileAPI
 
 
 class _BaseProfile(ProfileAPI, ABC):

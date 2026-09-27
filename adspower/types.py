@@ -1,9 +1,12 @@
-from typing import TypedDict, Literal, NotRequired, Any, Callable
+from __future__ import annotations
+
+from typing import Any, Callable, Literal
+
+from typing_extensions import NotRequired, TypedDict
 
 HandlingTuple = tuple[dict[str, dict | str], Callable[[dict[str, Any]], Any] | Callable[[], Any]]
 
-ProxySoft = Literal['luminati', 'lumauto', 'oxylabsatuto', '922S5', 'ipideaauto', 'ipfoxyauto', 'ssh', 'other',
-                    'no_proxy']
+ProxySoft = str
 IpChecker = Literal['ip2location', 'ipapi']
 RepeatConfigType = Literal[0, 2, 3, 4]
 ProxyType = Literal['http', 'https', 'socks5']
@@ -22,13 +25,19 @@ UserSortValue = Literal['desc', 'asc']
 UserSort = dict[UserSortKey, UserSortValue]
 
 
-class ProxyConfig(TypedDict):
+class ProxyConfig(TypedDict, total=False):
     soft: ProxySoft
-    type: ProxyType
+    proxy_soft: str
+    type: ProxyType | str
+    proxy_type: str
     host: str
+    proxy_host: str
     port: int
+    proxy_port: int | str
     user: str
+    proxy_user: str
     password: str
+    proxy_password: str
 
 
 class WebGLConfig(TypedDict):

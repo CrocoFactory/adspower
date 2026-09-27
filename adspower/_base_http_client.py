@@ -1,140 +1,71 @@
-import time
-from abc import ABC, abstractmethod
-from typing import Any, Optional, Callable, ClassVar, Union
-from httpx import USE_CLIENT_DEFAULT, Response
-from httpx._client import UseClientDefault
-from httpx._types import (URLTypes, RequestContent, RequestData, RequestFiles, QueryParamTypes, HeaderTypes,
-                          CookieTypes,
-                          AuthTypes, TimeoutTypes, RequestExtensions)
-from adspower.exceptions import InvalidPortError, InternalAPIError, ExceededQPSError, APIRefusedError, ZeroResponseError
+from __future__ import annotations
+
+import os
+from typing import ClassVar
+
+from httpx import Response
+
+from adspower.exceptions import APIRefusedError, ExceededQPSError, InternalAPIError, InvalidPortError, ZeroResponseError
 
 
-class _BaseHTTPClient(ABC):
-    _request_availability = 0
-    _delay: ClassVar[float] = 0.9
-    _timeout = 5.0
+class _BaseHTTPClient:
+    """Compatibility settings used by the deprecated 2.x HTTP clients."""
 
-    def __init__(self, port: int = 50325):
-        self._port = port
-        self._api_url = f'http://local.adspower.net:{self._port}'
-
-    @property
-    def api_url(self) -> str:
-        return self._api_url
+    _delay: ClassVar[float] = 0.0
+    _timeout: ClassVar[float] = 30.0
+    _base_url: ClassVar[str] = os.getenv("ADSPOWER_BASE_URL", "http://127.0.0.1:50325").rstrip("/")
+    _api_key: ClassVar[str | None] = os.getenv("ADSPOWER_API_KEY")
 
     @staticmethod
     def _validate_response(response: Response, error_msg: str) -> None:
         response.raise_for_status()
-        request = response.request
-        response_json = response.json()
-
-        if response_json.get('message'):
-            raise InternalAPIError(request=request, response=response_json)
-
-        if response_json['code'] != 0:
-            if 'Too many request per second, please check' in response_json['msg']:
+        payload = response.json()
+        if payload.get("message"):
+            raise InternalAPIError(request=response.request, response=payload)
+        if payload.get("code") not in (0, "0", None):
+            message = str(payload.get("msg", ""))
+            if "Too many request" in message:
                 raise ExceededQPSError
-            elif 'This feature is only available in paid subscriptions' in response_json['msg']:
+            if "paid subscriptions" in message:
                 raise APIRefusedError
-            else:
-                raise ZeroResponseError(error_msg, request, response_json)
+            raise ZeroResponseError(error_msg, response.request, payload)
 
     @classmethod
     def set_delay(cls, value: float) -> None:
-        """
-        Sets the delay between requests
-        :param value: Delay in seconds
-        :return: None
-        """
-        if isinstance(value, Union[float, int]):
-            cls._delay = value
-        else:
-            raise TypeError('Delay must be a float')
+        if not isinstance(value, (float, int)):
+            raise TypeError("Delay must be numeric")
+        cls._delay = float(value)
 
     @classmethod
     def set_timeout(cls, value: float) -> None:
-        """
-        Sets the timeout of the request
-        :param value: Timeout in seconds
-        :return: None
-        """
-        if isinstance(value, Union[float, int]):
-            cls._timeout = value
-        else:
-            raise TypeError('Timeout must be a float')
+        if not isinstance(value, (float, int)):
+            raise TypeError("Timeout must be numeric")
+        cls._timeout = float(value)
 
     @classmethod
     def set_port(cls, value: int) -> None:
-        """
-        Sets the port of the client. Use it only when your Local API has non-default port.
-        :param value: Port to be set
-        :return: None
-        """
-        if 1 <= value <= 65535:
-            cls._port = value
-            cls._api_url = f'http://local.adspower.net:{value}'
-        else:
+        if not isinstance(value, int) or not 1 <= value <= 65535:
             raise InvalidPortError(value)
+        cls._base_url = f"http://127.0.0.1:{value}"
+
+    @classmethod
+    def set_base_url(cls, value: str) -> None:
+        cls._base_url = value.rstrip("/")
+
+    @classmethod
+    def set_api_key(cls, value: str | None) -> None:
+        cls._api_key = value
 
     @classmethod
     def available(cls) -> bool:
-        """
-        Checks if the client is available.
-        :return: True if client is not locked due to delay, False otherwise
-        """
-        current_time = time.time()
-        return cls._request_availability < current_time
+        return True
 
-    @staticmethod
-    @abstractmethod
-    def _delay_request(func: Callable) -> Callable:
-        pass
-
-    @staticmethod
-    @abstractmethod
-    def _handle_request(func: Callable) -> Callable:
-        pass
+    @property
+    def api_url(self) -> str:
+        return self._base_url
 
     @property
     def port(self) -> int:
-        return self._port
+        from urllib.parse import urlsplit
 
-    @_handle_request
-    @_delay_request
-    @abstractmethod
-    def post(
-            self,
-            url: URLTypes,
-            *,
-            error_msg: str,
-            content: Optional[RequestContent] = None,
-            data: Optional[RequestData] = None,
-            files: Optional[RequestFiles] = None,
-            json: Optional[Any] = None,
-            params: Optional[QueryParamTypes] = None,
-            headers: Optional[HeaderTypes] = None,
-            cookies: Optional[CookieTypes] = None,
-            auth: AuthTypes | UseClientDefault = USE_CLIENT_DEFAULT,
-            follow_redirects: bool | UseClientDefault = USE_CLIENT_DEFAULT,
-            timeout: TimeoutTypes | UseClientDefault = USE_CLIENT_DEFAULT,
-            extensions: Optional[RequestExtensions] = None,
-    ) -> Response:
-        pass
-
-    @_handle_request
-    @_delay_request
-    @abstractmethod
-    def get(
-            self,
-            url: URLTypes,
-            *,
-            error_msg: str,
-            params: QueryParamTypes | None = None,
-            headers: HeaderTypes | None = None,
-            cookies: CookieTypes | None = None,
-            auth: AuthTypes | UseClientDefault = USE_CLIENT_DEFAULT,
-            follow_redirects: bool | UseClientDefault = USE_CLIENT_DEFAULT,
-            timeout: TimeoutTypes | UseClientDefault = USE_CLIENT_DEFAULT,
-            extensions: RequestExtensions | None = None,
-    ) -> Response:
-        pass
+        return urlsplit(str(self.base_url)).port or 80

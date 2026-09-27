@@ -1,11 +1,13 @@
 from datetime import datetime
-from typing import Optional, AsyncContextManager
+from typing import AsyncContextManager, Optional
+
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.webdriver import WebDriver
+
 from adspower.async_api._base_profile import _BaseProfile
-from adspower.async_api.group import Group
 from adspower.async_api.category import Category
+from adspower.async_api.group import Group
 from adspower.types import IpChecker
 
 
@@ -89,8 +91,9 @@ class Profile(_BaseProfile):
             clear_cache_after_closing: bool = False,
             enable_password_saving: bool = False,
             close_tabs: bool = True,
-            start_maximized: bool = True,
-            options: Options = Options()
+            start_maximized: bool = False,
+            page_load_strategy: str | None = None,
+            options: Options | None = None,
     ) -> WebDriver:
         """
         Get a WebDriver connected to the profile
@@ -120,11 +123,10 @@ class Profile(_BaseProfile):
         debugger_address = response['ws']['selenium']
         chrome_driver = response['webdriver']
 
+        options = options or Options()
         options.add_experimental_option('debuggerAddress', debugger_address)
-        options.page_load_strategy = 'none'
-
-        if not headless:
-            options.add_argument('--headless=new')
+        if page_load_strategy is not None:
+            options.page_load_strategy = page_load_strategy
 
         service = Service(executable_path=chrome_driver)
         browser = self._browser = WebDriver(service=service, options=options)
@@ -158,6 +160,7 @@ class Profile(_BaseProfile):
         Quit the browser
         :return: None
         """
+        if self._browser is not None:
+            self._browser.quit()
+            self._browser = None
         await self._quit()
-        self._browser.quit()
-        self._browser = None

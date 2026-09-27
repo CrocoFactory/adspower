@@ -1,9 +1,12 @@
 from datetime import datetime
-from typing import Optional, AsyncContextManager
+from typing import AsyncContextManager, Optional
+from urllib.parse import urlsplit
+
+from playwright.async_api import Browser, BrowserContext, Playwright, async_playwright
+
 from adspower.async_api._base_profile import _BaseProfile
-from adspower.async_api.group import Group
 from adspower.async_api.category import Category
-from playwright.async_api import async_playwright, BrowserContext, Playwright, Browser
+from adspower.async_api.group import Group
 from adspower.types import IpChecker
 
 
@@ -114,7 +117,10 @@ class Profile(_BaseProfile):
         )
 
         playwright = self.__playwright = (await async_playwright().start())
-        browser_app = await playwright.chromium.connect_over_cdp(f'http://localhost:{response["debug_port"]}')
+        endpoint = response.get('ws', {}).get('puppeteer')
+        if not endpoint:
+            endpoint = f'http://{urlsplit(self._client._base_url).hostname}:{response["debug_port"]}'
+        browser_app = await playwright.chromium.connect_over_cdp(endpoint)
         self.__browser_app = browser_app
         browser = self._browser = browser_app.contexts[0]
 
@@ -132,7 +138,7 @@ class Profile(_BaseProfile):
         new_page = await browser.new_page()
 
         for page in browser.pages:
-            if not (page is new_page):
+            if page is not new_page:
                 await page.close()
 
     async def quit(self) -> None:
@@ -140,11 +146,17 @@ class Profile(_BaseProfile):
         Quit the browser
         :return: None
         """
-        await self._quit()
-        await self._browser.close()
-        await self.__browser_app.close()
-        await self.__playwright.stop()
-
-        self._browser = None
-        self.__playwright = None
-        self.__browser_app = None
+        if self._browser is None and self.__browser_app is None and self.__playwright is None:
+            return
+        try:
+            if self.__browser_app is not None:
+                await self.__browser_app.close()
+        finally:
+            try:
+                await self._quit()
+            finally:
+                if self.__playwright is not None:
+                    await self.__playwright.stop()
+                self._browser = None
+                self.__playwright = None
+                self.__browser_app = None

@@ -1,9 +1,13 @@
 from typing import Callable
+
 import pytest
 from selenium.webdriver.chrome.webdriver import WebDriver
-from adspower.sync_api import Group, Category, HTTPClient
-from adspower.sync_api.selenium import Profile as ProfileSelenium
+
+from adspower.sync_api import Category, Group, HTTPClient
 from adspower.sync_api.playwright import Profile as ProfilePlaywright
+from adspower.sync_api.selenium import Profile as ProfileSelenium
+
+pytestmark = pytest.mark.integration
 
 HTTPClient.set_delay(1.1)
 ProfileType = ProfileSelenium | ProfilePlaywright
