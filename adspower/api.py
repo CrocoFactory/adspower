@@ -22,11 +22,30 @@ def _items(data: Any) -> list[Mapping[str, Any]]:
     return []
 
 
+def _v2_list_payload(page: int, page_size: int, filters: Mapping[str, Any]) -> tuple[dict[str, Any], str | None]:
+    request_filters = dict(filters)
+    name = request_filters.pop("name", None)
+    for key in ("profile_id", "profile_no"):
+        if key in request_filters and isinstance(request_filters[key], str):
+            request_filters[key] = [request_filters[key]]
+    return _compact({"page": page, "limit": page_size, **request_filters}), name
+
+
 class ProfilesAPI:
     def __init__(self, transport: Any) -> None:
         self._transport = transport
 
     def create(self, *, name: str | None = None, group_id: str = "0", **fields: Any) -> Profile:
+        fields.setdefault("user_proxy_config", {"proxy_soft": "no_proxy"})
+        fields.setdefault(
+            "fingerprint_config",
+            {
+                "automatic_timezone": "1",
+                "language": ["en-US", "en"],
+                "flash": "block",
+                "webrtc": "disabled",
+            },
+        )
         payload = _compact({"name": name, "group_id": group_id, **fields})
         data = self._transport.request("POST", "/api/v2/browser-profile/create", json=payload)
         return Profile.from_api(data)
@@ -39,9 +58,10 @@ class ProfilesAPI:
         return Profile(id=profile_id, extra=dict(data) if isinstance(data, Mapping) else {})
 
     def list(self, *, page: int = 1, page_size: int = 100, **filters: Any) -> list[Profile]:
-        payload = _compact({"page": page, "page_size": page_size, **filters})
+        payload, name = _v2_list_payload(page, page_size, filters)
         data = self._transport.request("POST", "/api/v2/browser-profile/list", json=payload)
-        return [Profile.from_api(item) for item in _items(data)]
+        profiles = [Profile.from_api(item) for item in _items(data)]
+        return profiles if name is None else [profile for profile in profiles if profile.name == name]
 
     def get(self, profile_id: str) -> Profile:
         profiles = self.list(profile_id=profile_id, page_size=1)
@@ -50,7 +70,7 @@ class ProfilesAPI:
         return profiles[0]
 
     def delete(self, profile_id: str) -> None:
-        self._transport.request("POST", "/api/v2/browser-profile/delete", json={"profile_id": profile_id})
+        self._transport.request("POST", "/api/v2/browser-profile/delete", json={"profile_id": [profile_id]})
 
 
 class AsyncProfilesAPI:
@@ -58,6 +78,16 @@ class AsyncProfilesAPI:
         self._transport = transport
 
     async def create(self, *, name: str | None = None, group_id: str = "0", **fields: Any) -> Profile:
+        fields.setdefault("user_proxy_config", {"proxy_soft": "no_proxy"})
+        fields.setdefault(
+            "fingerprint_config",
+            {
+                "automatic_timezone": "1",
+                "language": ["en-US", "en"],
+                "flash": "block",
+                "webrtc": "disabled",
+            },
+        )
         payload = _compact({"name": name, "group_id": group_id, **fields})
         data = await self._transport.request("POST", "/api/v2/browser-profile/create", json=payload)
         return Profile.from_api(data)
@@ -70,9 +100,10 @@ class AsyncProfilesAPI:
         return Profile(id=profile_id, extra=dict(data) if isinstance(data, Mapping) else {})
 
     async def list(self, *, page: int = 1, page_size: int = 100, **filters: Any) -> list[Profile]:
-        payload = _compact({"page": page, "page_size": page_size, **filters})
+        payload, name = _v2_list_payload(page, page_size, filters)
         data = await self._transport.request("POST", "/api/v2/browser-profile/list", json=payload)
-        return [Profile.from_api(item) for item in _items(data)]
+        profiles = [Profile.from_api(item) for item in _items(data)]
+        return profiles if name is None else [profile for profile in profiles if profile.name == name]
 
     async def get(self, profile_id: str) -> Profile:
         profiles = await self.list(profile_id=profile_id, page_size=1)
@@ -81,7 +112,7 @@ class AsyncProfilesAPI:
         return profiles[0]
 
     async def delete(self, profile_id: str) -> None:
-        await self._transport.request("POST", "/api/v2/browser-profile/delete", json={"profile_id": profile_id})
+        await self._transport.request("POST", "/api/v2/browser-profile/delete", json={"profile_id": [profile_id]})
 
 
 class GroupsAPI:

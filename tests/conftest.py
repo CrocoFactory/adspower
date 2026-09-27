@@ -2,7 +2,6 @@ import uuid
 from typing import Callable
 
 import pytest
-from faker import Faker
 
 
 @pytest.fixture(scope="function")
@@ -21,17 +20,13 @@ def get_name() -> Callable[[], str]:
 
 @pytest.fixture(scope="function")
 def remark() -> str:
-    fake = Faker()
-    remark = fake.text()
-    return remark
+    return f"test-{uuid.uuid4()}"
 
 
 @pytest.fixture(scope="function")
 def get_remark() -> Callable[[], str]:
     def _get_remark() -> str:
-        fake = Faker()
-        remark = fake.text()
-        return remark
+        return f"test-{uuid.uuid4()}"
     return _get_remark
 
 

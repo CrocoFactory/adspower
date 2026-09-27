@@ -104,6 +104,11 @@ pip check
 Run package smoke tests across the supported Python matrix. Documentation code
 samples should be compiled or executed with mocked transport where practical.
 
+The CI package job uploads the checked wheel and source distribution as a build
+artifact. Publishing to PyPI is intentionally not automated yet; configure a
+protected GitHub environment and PyPI trusted publishing before adding a release
+deployment job.
+
 ## Release gate
 
 Do not publish based only on unit tests. The release candidate gate is:

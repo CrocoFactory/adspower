@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Mapping
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlunsplit
 
 
 class ProxySoftware(str, Enum):
@@ -90,9 +90,27 @@ class BrowserConnection:
         debug_port = int(debug_port_raw) if debug_port_raw not in (None, "") else None
         selenium = ws.get("selenium") or data.get("selenium")
         playwright = ws.get("puppeteer") or data.get("playwright_cdp")
+        api_host = urlsplit(base_url).hostname or "127.0.0.1"
+        loopback_hosts = {"127.0.0.1", "localhost", "::1"}
+        if selenium and api_host not in loopback_hosts:
+            parsed_selenium = urlsplit(f"//{selenium}")
+            if parsed_selenium.hostname in loopback_hosts and parsed_selenium.port:
+                selenium = f"{api_host}:{parsed_selenium.port}"
+        if playwright and api_host not in loopback_hosts:
+            parsed_playwright = urlsplit(str(playwright))
+            if parsed_playwright.hostname in loopback_hosts:
+                port = f":{parsed_playwright.port}" if parsed_playwright.port else ""
+                playwright = urlunsplit(
+                    (
+                        parsed_playwright.scheme,
+                        f"{api_host}{port}",
+                        parsed_playwright.path,
+                        parsed_playwright.query,
+                        parsed_playwright.fragment,
+                    )
+                )
         if debug_port is not None and not selenium:
-            host = urlsplit(base_url).hostname or "127.0.0.1"
-            selenium = f"{host}:{debug_port}"
+            selenium = f"{api_host}:{debug_port}"
         known = {"ws", "debug_port", "webdriver", "selenium", "playwright_cdp"}
         return cls(
             selenium=str(selenium) if selenium else None,

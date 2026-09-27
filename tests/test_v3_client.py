@@ -87,6 +87,47 @@ def test_sync_v2_contract_auth_and_no_preflight() -> None:
     assert body["user_proxy_config"]["proxy_soft"] == "new-provider"
 
 
+def test_v2_profile_payloads_match_current_adspower_contract() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.url.path.endswith("/create"):
+            return response({"code": 0, "data": {"profile_id": "created"}})
+        if request.url.path.endswith("/list"):
+            return response({"code": 0, "data": {"list": [{"profile_id": "p1"}]}})
+        return response({"code": 0, "data": {}})
+
+    with AdsPowerClient(transport=httpx.MockTransport(handler)) as client:
+        client.profiles.create(name="defaults")
+        assert client.profiles.get("p1").id == "p1"
+        client.profiles.delete("p1")
+
+    create_body = json.loads(requests[0].content)
+    assert create_body["user_proxy_config"] == {"proxy_soft": "no_proxy"}
+    assert create_body["fingerprint_config"]["automatic_timezone"] == "1"
+    assert create_body["fingerprint_config"]
+    assert json.loads(requests[1].content) == {"page": 1, "limit": 1, "profile_id": ["p1"]}
+    assert json.loads(requests[2].content) == {"profile_id": ["p1"]}
+
+
+def test_update_screen_resolution_uses_documented_fingerprint_field() -> None:
+    requests: list[httpx.Request] = []
+    transport = httpx.MockTransport(
+        lambda request: requests.append(request) or response({"code": 0, "data": {}})
+    )
+    with AdsPowerClient(transport=transport) as client:
+        client.profiles.update(
+            "p1",
+            fingerprint_config={"screen_resolution": ScreenResolution.fixed(1366, 768)},
+        )
+
+    assert json.loads(requests[0].content) == {
+        "profile_id": "p1",
+        "fingerprint_config": {"screen_resolution": "1366_768"},
+    }
+
+
 def test_profile_crud_and_v1_namespace() -> None:
     paths: list[str] = []
 
@@ -172,7 +213,7 @@ async def test_async_parity_and_exact_contract() -> None:
 
     async def handler(request: httpx.Request) -> httpx.Response:
         requests.append(request)
-        return response({"code": "0", "data": {"list": [{"user_id": "async", "new": 1}]}})
+        return response({"code": "0", "data": {"list": [{"user_id": "async", "name": "test", "new": 1}]}})
 
     async with AsyncAdsPowerClient(
         api_key="async-secret",
@@ -184,6 +225,7 @@ async def test_async_parity_and_exact_contract() -> None:
     assert profiles[0].extra["new"] == 1
     assert requests[0].headers["Authorization"] == "Bearer async-secret"
     assert requests[0].url.path == "/api/v2/browser-profile/list"
+    assert json.loads(requests[0].content) == {"page": 1, "limit": 100}
 
 
 def test_sync_limiter_with_fake_clock() -> None:
@@ -218,6 +260,48 @@ async def test_async_limiter_serializes_concurrent_callers() -> None:
 def test_browser_connection_remote_fallback() -> None:
     connection = BrowserConnection.from_api({"debug_port": "9222"}, base_url="http://docker-host:50325")
     assert connection.selenium == "docker-host:9222"
+
+
+def test_browser_connection_rewrites_loopback_endpoints_for_remote_api() -> None:
+    connection = BrowserConnection.from_api(
+        {
+            "ws": {
+                "selenium": "127.0.0.1:9222",
+                "puppeteer": "ws://127.0.0.1:9222/devtools/browser/exact",
+            },
+            "debug_port": "9222",
+        },
+        base_url="http://host.docker.internal:50325",
+    )
+    assert connection.selenium == "host.docker.internal:9222"
+    assert connection.playwright_cdp == "ws://host.docker.internal:9222/devtools/browser/exact"
+
+
+def test_browser_connection_keeps_local_endpoints_exact() -> None:
+    connection = BrowserConnection.from_api(
+        {"ws": {"puppeteer": "ws://127.0.0.1:9222/devtools/browser/exact"}},
+        base_url="http://127.0.0.1:50325",
+    )
+    assert connection.playwright_cdp == "ws://127.0.0.1:9222/devtools/browser/exact"
+
+
+def test_legacy_profile_parser_ignores_new_response_fields() -> None:
+    from adspower.sync_api.profile_api import ProfileAPI
+
+    parsed = ProfileAPI._get_init_args(
+        {
+            "user_id": "legacy",
+            "serial_number": "1",
+            "group_id": "0",
+            "group_name": "Ungrouped",
+            "created_time": "0",
+            "last_open_time": "0",
+            "user_proxy_config": {"proxy_soft": "no_proxy"},
+            "future_field": True,
+        }
+    )
+    profile = ProfileAPI(**parsed)
+    assert profile.id == "legacy"
 
 
 def test_groups_and_explicit_health_contracts() -> None:

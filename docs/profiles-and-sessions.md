@@ -15,6 +15,9 @@ profile = client.profiles.update(profile.id, name="renamed")
 client.profiles.delete(profile.id)
 ```
 
+The SDK translates `page_size` to AdsPower V2's `limit` field and sends profile
+IDs as arrays for V2 list and delete calls, as required by the current API.
+
 Create returns the profile directly from the server response. It does not issue a
 second list request just to recover an identifier.
 
@@ -32,6 +35,9 @@ This tolerant model prevents newly added AdsPower fields from breaking the SDK.
 
 Additional keyword arguments are passed through to the V2 request. `None` values
 are omitted while false values, empty lists, and zero values are retained.
+When omitted during creation, the SDK supplies AdsPower's documented no-proxy
+configuration and a minimal valid fingerprint configuration. Explicit values
+always take precedence.
 
 ```python
 profile = client.profiles.create(
