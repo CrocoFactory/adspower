@@ -1,17 +1,43 @@
 # AdsPower Python SDK
 
-Typed sync and async clients for the current AdsPower Local API V2. Version 3
-supports local, Docker, and private remote deployments.
+<p align="center">
+  <a href="https://www.adspower.com">
+    <img src="https://raw.githubusercontent.com/CrocoFactory/adspower/main/branding/adspower/banner.png" alt="AdsPower Python SDK" width="720">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/CrocoFactory/adspower/actions/workflows/ci.yml?query=branch%3Amain"><img src="https://github.com/CrocoFactory/adspower/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
+  <a href="https://pypi.org/project/adspower/"><img src="https://img.shields.io/pypi/v/adspower?color=1d4dff" alt="PyPI version"></a>
+  <a href="https://pypi.org/project/adspower/"><img src="https://img.shields.io/pypi/pyversions/adspower?color=1d4dff" alt="Python versions"></a>
+  <a href="https://github.com/CrocoFactory/adspower/blob/main/LICENSE"><img src="https://img.shields.io/github/license/CrocoFactory/adspower" alt="License"></a>
+</p>
+
+Typed synchronous and asynchronous clients for the current AdsPower Local API
+V2, with safe Selenium and Playwright attachment. The SDK supports local,
+Docker and private remote AdsPower deployments.
+
+> Version 3 is a breaking release. The old `adspower.sync_api` and
+> `adspower.async_api` packages were removed; use the clients shown below.
+
+## Features
+
+- Sync and async profile CRUD through AdsPower API V2.
+- Browser start/stop with Selenium, sync Playwright and async Playwright.
+- API-key authentication, configurable endpoints and timeouts.
+- Docker/remote CDP endpoint handling.
+- Forward-compatible response models that preserve unknown fields.
+- Optional, concurrency-safe rate limiting.
+- Python 3.10–3.15 support.
 
 ## Requirements
 
-- Python 3.10–3.15
-- AdsPower with Local API enabled for your account and installation
-- Optional Selenium 4.x or Playwright 1.x for browser attachment
+- Python 3.10 or newer (through 3.15).
+- AdsPower with Local API enabled and accessible to your account.
+- Selenium and/or Playwright only when browser automation is needed.
 
-AdsPower API availability and rate limits can vary by endpoint, application
-version, and account configuration. Check the official AdsPower documentation
-for current service-side requirements.
+AdsPower availability, permissions and rate limits depend on the installed
+application version and account. See the [official Local API documentation](https://localapi-doc-en.adspower.com/).
 
 ## Installation
 
@@ -22,46 +48,29 @@ pip install 'adspower[playwright]'
 pip install 'adspower[all]'
 ```
 
-## Quick start
+## Quick start: sync
 
 ```python
-from adspower import AdsPowerClient
+from adspower import AdsPowerClient, ScreenResolution
 
-with AdsPowerClient(api_key="secret") as client:
+with AdsPowerClient(api_key="your-api-key") as client:
     profile = client.profiles.create(
         name="example",
         group_id="0",
-        fingerprint_config={"screen_resolution": "1920_1080"},
+        fingerprint_config={
+            "screen_resolution": ScreenResolution.fixed(1920, 1080),
+        },
     )
-    session = client.browsers.start(profile.id, headless=False)
 
+    session = client.browsers.start(profile.id)
     with session.selenium() as driver:
         driver.get("https://example.com")
 ```
 
-The default endpoint is `http://127.0.0.1:50325`. You can configure it directly
-or with environment variables:
+`start_maximized` is opt-in. Headless mode belongs on the AdsPower start
+request, not in Selenium options.
 
-```bash
-export ADSPOWER_BASE_URL=http://host.docker.internal:50325
-export ADSPOWER_API_KEY=your-api-key
-```
-
-```python
-from adspower import AdsPowerClient
-
-client = AdsPowerClient(
-    base_url="http://192.168.1.20:50325",
-    api_key="secret",
-    timeout=60.0,
-)
-```
-
-API keys are sent as bearer tokens and are redacted from client representations.
-Do not expose a remote Local API port directly to the public internet; use a
-private network, VPN, and firewall controls.
-
-## Async usage
+## Quick start: async Playwright
 
 ```python
 import asyncio
@@ -70,7 +79,7 @@ from adspower import AsyncAdsPowerClient
 
 
 async def main() -> None:
-    async with AsyncAdsPowerClient() as client:
+    async with AsyncAdsPowerClient(api_key="your-api-key") as client:
         profile = await client.profiles.get("profile-id")
         session = await client.browsers.start(profile.id)
 
@@ -83,69 +92,97 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-The browser adapter disconnects before stopping the AdsPower profile. Cleanup is
-idempotent, and cleanup failures do not replace an exception raised by user code
-inside a context manager.
+The async client uses Playwright's exact CDP websocket returned by AdsPower and
+disconnects before stopping the profile. Cleanup is idempotent.
 
-## Profile operations
-
-```python
-profiles = client.profiles.list(group_id="0", page=1, page_size=100)
-profile = client.profiles.get("profile-id")
-updated = client.profiles.update(profile.id, name="new-name")
-client.profiles.delete(profile.id)
-```
-
-Response parsing tolerates fields added by AdsPower. Known values are exposed as
-typed attributes and unknown values remain available through `profile.extra`.
-`user_proxy_config` is preserved on the profile model.
-
-Proxy provider names accept strings so new AdsPower providers do not require an
-SDK release. Known names are available through `ProxySoftware` for autocomplete.
+## Profiles and groups
 
 ```python
-from adspower import ProxySoftware, ScreenResolution
-
 profile = client.profiles.create(
     name="configured",
     group_id="0",
     user_proxy_config={
-        "proxy_soft": ProxySoftware.OTHER.value,
-        "proxy_type": "http",
-        "proxy_host": "proxy.internal",
-        "proxy_port": "8080",
+        "proxy_soft": "no_proxy",
     },
     fingerprint_config={
-        "screen_resolution": ScreenResolution.fixed(1920, 1080),
+        "screen_resolution": "1366_768",
     },
+)
+
+profiles = client.profiles.list(group_id="0", page=1, page_size=100)
+profile = client.profiles.get(profile.id)
+profile = client.profiles.update(profile.id, name="renamed")
+client.profiles.delete(profile.id)
+
+group = client.groups.create("automation", remark="managed by SDK")
+groups = client.groups.list(name=group.name)
+```
+
+`page_size` is translated to AdsPower V2's `limit` field. Profile IDs are
+serialized in the shape expected by the current V2 API. When omitted, profile
+creation receives a documented no-proxy configuration and a minimal valid
+fingerprint configuration; explicit values always win.
+
+## Configuration
+
+The default endpoint is `http://127.0.0.1:50325`. Configure it directly or
+through environment variables:
+
+```bash
+export ADSPOWER_BASE_URL=http://host.docker.internal:50325
+export ADSPOWER_API_KEY=your-api-key
+```
+
+```python
+from adspower import AdsPowerClient
+
+client = AdsPowerClient(
+    base_url="http://192.168.1.20:50325",
+    api_key="your-api-key",
+    timeout=60.0,
+    browser_start_timeout=90.0,
 )
 ```
 
-AdsPower also accepts special screen-resolution values such as `random` and
-`none` where supported by its current API.
+API keys are sent as `Authorization: Bearer ...` and are redacted from client
+representations. Keep a remote Local API port on a private network or VPN.
 
-## Browser automation
-
-`headless` is sent to AdsPower when starting a browser. It is not injected into
-Selenium options after attachment. Window maximization is opt-in and Selenium's
-default page-load strategy is preserved unless explicitly overridden.
+## Automation options
 
 ```python
 session = client.browsers.start("profile-id", headless=True)
 
 with session.selenium(
-    start_maximized=False,
+    start_maximized=True,
     page_load_strategy="eager",
 ) as driver:
-    ...
+    driver.get("https://example.com")
 ```
 
-Playwright connects to the exact CDP websocket returned by AdsPower. Selenium
-uses the returned debugger address and AdsPower-provided WebDriver path when
-present. Attach-only Playwright usage does not launch a bundled browser.
+For sync Playwright:
 
-The class-based `adspower.sync_api` and `adspower.async_api` packages from 2.x
-were removed in 3.0. Use `AdsPowerClient` or `AsyncAdsPowerClient`.
+```python
+with client.browsers.start("profile-id").playwright() as browser:
+    page = browser.contexts[0].pages[0]
+    page.goto("https://example.com")
+```
+
+The SDK attaches to an existing AdsPower browser; it does not launch a bundled
+Playwright Chromium. See [automation.md](docs/automation.md) for lifecycle and
+manual cleanup options.
+
+## Development
+
+```bash
+poetry install --all-extras
+poetry run ruff check adspower tests
+poetry run pytest -m "not integration" --cov --cov-fail-under=85
+poetry build
+```
+
+Real Selenium/Playwright integration tests require an AdsPower installation and
+a dedicated test profile. They are kept separate from deterministic mocked API
+contract tests.
 
 ## Documentation
 
@@ -153,8 +190,9 @@ were removed in 3.0. Use `AdsPowerClient` or `AsyncAdsPowerClient`.
 - [Configuration and networking](docs/configuration.md)
 - [Profiles and browser sessions](docs/profiles-and-sessions.md)
 - [Automation adapters](docs/automation.md)
-- [Migrating from 2.x](docs/migration-2-to-3.md)
+- [Migration from 2.x](docs/migration-2-to-3.md)
 - [Development and release checks](docs/development.md)
+- [Open issues](https://github.com/CrocoFactory/adspower/issues)
 
 ## License
 
