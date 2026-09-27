@@ -13,7 +13,8 @@ The implementation keeps shared behavior outside sync and async wrappers:
 - `rate_limit.py` provides concurrency-safe limiters;
 - `client.py` and `async_client.py` compose public services;
 - `automation.py` contains optional browser adapters;
-- `legacy.py` exposes explicit V1 profile operations.
+- `api.py` contains V2 profile/browser operations and the V1 group endpoints
+  that remain part of the current AdsPower contract.
 
 The transport uses only public HTTPX APIs. A request is sent directly, without a
 status preflight. HTTP errors, network errors, JSON failures, and AdsPower

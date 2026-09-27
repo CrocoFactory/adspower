@@ -104,19 +104,9 @@ and remote-host attachment where rebuilding `http://localhost:<port>` was wrong.
 Async cleanup disconnects automation before stopping the profile and Playwright
 runtime. Calling cleanup twice is safe.
 
-## V1 bridge
-
-For a staged migration, use:
-
-```python
-legacy = client.v1.profiles.create(group_id="0", name="example")
-profiles = client.v1.profiles.list(group_id="0")
-```
-
-The old `adspower.sync_api` and `adspower.async_api` packages were removed in
-3.0. They relied on global class-level configuration and cannot be mixed with
-the new clients. Use the explicit `client.v1` namespace only where V1 profile
-compatibility is required.
+The old `adspower.sync_api`, `adspower.async_api`, and V1 profile bridge were
+removed in 3.0. Migrate profile operations to `client.profiles` and browser
+operations to `client.browsers`.
 
 ## Dependency changes
 
@@ -135,5 +125,4 @@ Supported ranges are HTTPX 0.27.2–0.x, Selenium 4.20–4.x, and Playwright
 
 - `README.md`
 - `adspower/client.py`
-- `adspower/legacy.py`
 - `pyproject.toml`

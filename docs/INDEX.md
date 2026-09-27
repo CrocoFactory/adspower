@@ -8,7 +8,7 @@ each topic can be read independently.
 - [Configuration and networking](configuration.md) — endpoint resolution,
   authentication, timeouts, Docker, remote hosts, and rate limiting.
 - [Profiles and browser sessions](profiles-and-sessions.md) — V2 profile CRUD,
-  tolerant response models, groups, V1 compatibility, and browser lifecycle.
+  tolerant response models, groups, and browser lifecycle.
 - [Automation adapters](automation.md) — Selenium and Playwright attachment,
   endpoint selection, cleanup, and optional dependencies.
 - [Migration from 2.x to 3.x](migration-2-to-3.md) — breaking changes and direct
@@ -30,7 +30,6 @@ each topic can be read independently.
 | Sync client and sessions | `adspower/client.py` |
 | Async client and sessions | `adspower/async_client.py` |
 | Browser adapters | `adspower/automation.py` |
-| V1 namespace | `adspower/legacy.py` |
 | Rate limiting | `adspower/rate_limit.py` |
 | Exception hierarchy | `adspower/exceptions.py` |
 

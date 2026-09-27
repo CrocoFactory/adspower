@@ -128,28 +128,24 @@ def test_update_screen_resolution_uses_documented_fingerprint_field() -> None:
     }
 
 
-def test_profile_crud_and_v1_namespace() -> None:
+def test_profile_crud() -> None:
     paths: list[str] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
         paths.append(request.url.path)
         if request.url.path.endswith("/list"):
             return response({"code": 0, "data": {"list": [{"profile_id": "p1"}]}})
-        if request.url.path.endswith("/create") and "/v1/" in request.url.path:
-            return response({"code": 0, "data": {"id": "legacy"}})
         return response({"code": 0, "data": {}})
 
     with AdsPowerClient(transport=httpx.MockTransport(handler)) as client:
         assert client.profiles.get("p1").id == "p1"
         client.profiles.update("p1", name="updated")
         client.profiles.delete("p1")
-        assert client.v1.profiles.create(name="old").id == "legacy"
 
     assert paths == [
         "/api/v2/browser-profile/list",
         "/api/v2/browser-profile/update",
         "/api/v2/browser-profile/delete",
-        "/api/v1/user/create",
     ]
 
 
@@ -306,7 +302,7 @@ def test_groups_and_explicit_health_contracts() -> None:
 
 
 @pytest.mark.asyncio
-async def test_async_crud_browser_groups_health_and_v1() -> None:
+async def test_async_crud_browser_groups_health() -> None:
     paths: list[str] = []
 
     async def handler(request: httpx.Request) -> httpx.Response:
@@ -322,10 +318,6 @@ async def test_async_crud_browser_groups_health_and_v1() -> None:
             return response({"code": 0, "data": {"group_id": "g1", "group_name": "g"}})
         if path.endswith("group/list"):
             return response({"code": 0, "data": {"list": [{"group_id": "g1"}]}})
-        if path.endswith("user/create"):
-            return response({"code": 0, "data": {"id": "old"}})
-        if path.endswith("user/list"):
-            return response({"code": 0, "data": {"list": [{"user_id": "old"}]}})
         return response({"code": 0, "data": {}})
 
     async with AsyncAdsPowerClient(transport=httpx.MockTransport(handler)) as client:
@@ -339,9 +331,6 @@ async def test_async_crud_browser_groups_health_and_v1() -> None:
         assert session.connection.playwright_cdp == "ws://exact"
         await session.stop()
         await session.stop()
-        assert (await client.v1.profiles.create(name="old")).id == "old"
-        assert (await client.v1.profiles.list())[0].id == "old"
-        await client.v1.profiles.delete("old")
         assert await client.health.check() == {}
 
     assert paths.count("/api/v2/browser-profile/stop") == 1

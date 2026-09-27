@@ -8,7 +8,6 @@ import httpx
 from .api import GroupsAPI, HealthAPI, ProfilesAPI, parse_browser_connection
 from .automation import PlaywrightSession, SeleniumSession
 from .config import ClientConfig
-from .legacy import LegacyV1
 from .models import BrowserConnection
 from .rate_limit import RateLimit
 from .transport import SyncTransport
@@ -67,7 +66,7 @@ class BrowsersAPI:
 
 
 class AdsPowerClient:
-    """Synchronous AdsPower client. API V2 is the default; V1 is under ``client.v1``."""
+    """Synchronous AdsPower client for the current AdsPower API."""
 
     def __init__(
         self,
@@ -96,7 +95,6 @@ class AdsPowerClient:
         self.groups = GroupsAPI(self._transport)
         self.browsers = BrowsersAPI(self._transport, self.config)
         self.health = HealthAPI(self._transport)
-        self.v1 = LegacyV1(self._transport)
 
     def close(self) -> None:
         self._transport.close()

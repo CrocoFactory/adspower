@@ -8,7 +8,6 @@ import httpx
 from .api import AsyncGroupsAPI, AsyncHealthAPI, AsyncProfilesAPI, parse_browser_connection
 from .automation import AsyncPlaywrightSession
 from .config import ClientConfig
-from .legacy import AsyncLegacyV1
 from .models import BrowserConnection
 from .rate_limit import RateLimit
 from .transport import AsyncTransport
@@ -77,7 +76,6 @@ class AsyncAdsPowerClient:
         self.groups = AsyncGroupsAPI(self._transport)
         self.browsers = AsyncBrowsersAPI(self._transport, self.config)
         self.health = AsyncHealthAPI(self._transport)
-        self.v1 = AsyncLegacyV1(self._transport)
 
     async def close(self) -> None:
         await self._transport.close()

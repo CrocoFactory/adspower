@@ -63,8 +63,8 @@ group = client.groups.create("automation", remark="managed by SDK")
 groups = client.groups.list(name="automation")
 ```
 
-This is intentionally separate from `client.v1`, which represents the legacy
-profile contract.
+Groups remain a V1 endpoint because AdsPower does not expose an equivalent V2
+group contract; this does not affect V2 profile or browser operations.
 
 ## Browser sessions
 
@@ -102,22 +102,9 @@ await session.stop()
 Only I/O orchestration differs. Request paths, serializers, models, response
 handling, and exception mapping are shared with the sync API.
 
-## V1 profile compatibility
-
-Use the explicit namespace for old profile endpoints:
-
-```python
-profile = client.v1.profiles.create(group_id="0", name="legacy")
-profiles = client.v1.profiles.list(group_id="0", page=1, page_size=100)
-client.v1.profiles.delete(profile.id)
-```
-
-The V1 namespace is a migration bridge. Prefer V2 for new applications.
-
 ## References
 
 - `adspower/models.py`
 - `adspower/api.py`
 - `adspower/client.py`
 - `adspower/async_client.py`
-- `adspower/legacy.py`

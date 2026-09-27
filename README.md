@@ -1,7 +1,6 @@
 # AdsPower Python SDK
 
-Typed sync and async clients for the AdsPower Local API. Version 3 uses API V2
-for browser profiles, keeps V1 behind an explicit compatibility namespace, and
+Typed sync and async clients for the current AdsPower Local API V2. Version 3
 supports local, Docker, and private remote deployments.
 
 ## Requirements
@@ -145,18 +144,8 @@ Playwright connects to the exact CDP websocket returned by AdsPower. Selenium
 uses the returned debugger address and AdsPower-provided WebDriver path when
 present. Attach-only Playwright usage does not launch a bundled browser.
 
-## V1 compatibility
-
-V2 is the default in 3.x. V1 profile endpoints remain explicit:
-
-```python
-legacy_profile = client.v1.profiles.create(group_id="0", name="legacy")
-legacy_profiles = client.v1.profiles.list(group_id="0")
-```
-
 The class-based `adspower.sync_api` and `adspower.async_api` packages from 2.x
-were removed in 3.0. Use `AdsPowerClient` or `AsyncAdsPowerClient`. The explicit
-`client.v1` namespace is the only supported bridge to V1 profile endpoints.
+were removed in 3.0. Use `AdsPowerClient` or `AsyncAdsPowerClient`.
 
 ## Documentation
 
