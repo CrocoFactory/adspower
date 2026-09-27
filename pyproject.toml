@@ -41,7 +41,6 @@ all = ["selenium", "playwright"]
 pytest = ">=8,<10"
 twine = ">=5,<7"
 build = ">=1.2,<2"
-faker = ">=24,<40"
 pytest-asyncio = ">=0.23,<2"
 pytest-cov = ">=5,<8"
 ruff = ">=0.8,<1"

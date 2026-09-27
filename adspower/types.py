@@ -1,14 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, Callable, Literal
+from typing import Any, Literal
 
 from typing_extensions import NotRequired, TypedDict
 
-HandlingTuple = tuple[dict[str, dict | str], Callable[[dict[str, Any]], Any] | Callable[[], Any]]
-
 ProxySoft = str
-IpChecker = Literal['ip2location', 'ipapi']
-RepeatConfigType = Literal[0, 2, 3, 4]
 ProxyType = Literal['http', 'https', 'socks5']
 WebRtcType = Literal['forward', 'proxy', 'local', 'disabled']
 LocationType = Literal['ask', 'allow', 'block']
@@ -17,12 +13,7 @@ DeviceNameType = Literal[0, 1, 2]
 MediaDeviceType = Literal[0, 1, 2]
 GPUType = Literal[0, 1, 2]
 WebGLVersion = Literal[0, 2, 3]
-Cookies = list[dict[str, Any]] | dict[str, Any]
 IntBool = Literal[0, 1]
-
-UserSortKey = Literal['serial_number', 'last_open_time', 'created_time']
-UserSortValue = Literal['desc', 'asc']
-UserSort = dict[UserSortKey, UserSortValue]
 
 
 class ProxyConfig(TypedDict, total=False):
@@ -105,44 +96,3 @@ class FingerprintConfig(TypedDict):
     mac_address_config: NotRequired[MacAddressConfig]
     browser_kernel_config: NotRequired[BrowserKernelConfig]
     gpu: NotRequired[GPUType]
-
-
-class DebugInterface(TypedDict):
-    selenium: str
-    puppeteer: str
-
-
-class BrowserResponse(TypedDict):
-    ws: DebugInterface
-    debug_port: str
-    webdriver: str
-
-
-class GroupInfo(TypedDict):
-    group_id: int
-    group_name: str
-    remark: str
-
-
-class CategoryInfo(TypedDict):
-    id: int
-    name: str
-    remark: str
-
-
-class ProfileInfo(TypedDict):
-    profile_id: str
-    serial_number: int
-    name: str
-    group_id: int
-    group_name: str
-    domain_name: str
-    username: str
-    remark: str
-    created_time: int
-    category_id: int
-    ip: str
-    ip_country: str
-    ip_checker: str
-    fakey: str
-    password: str

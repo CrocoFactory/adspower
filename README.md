@@ -154,8 +154,9 @@ legacy_profile = client.v1.profiles.create(group_id="0", name="legacy")
 legacy_profiles = client.v1.profiles.list(group_id="0")
 ```
 
-The original module-level 2.x API remains importable for one migration cycle but
-is deprecated. New code should use `AdsPowerClient` or `AsyncAdsPowerClient`.
+The class-based `adspower.sync_api` and `adspower.async_api` packages from 2.x
+were removed in 3.0. Use `AdsPowerClient` or `AsyncAdsPowerClient`. The explicit
+`client.v1` namespace is the only supported bridge to V1 profile endpoints.
 
 ## Documentation
 

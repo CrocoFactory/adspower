@@ -285,25 +285,6 @@ def test_browser_connection_keeps_local_endpoints_exact() -> None:
     assert connection.playwright_cdp == "ws://127.0.0.1:9222/devtools/browser/exact"
 
 
-def test_legacy_profile_parser_ignores_new_response_fields() -> None:
-    from adspower.sync_api.profile_api import ProfileAPI
-
-    parsed = ProfileAPI._get_init_args(
-        {
-            "user_id": "legacy",
-            "serial_number": "1",
-            "group_id": "0",
-            "group_name": "Ungrouped",
-            "created_time": "0",
-            "last_open_time": "0",
-            "user_proxy_config": {"proxy_soft": "no_proxy"},
-            "future_field": True,
-        }
-    )
-    profile = ProfileAPI(**parsed)
-    assert profile.id == "legacy"
-
-
 def test_groups_and_explicit_health_contracts() -> None:
     paths: list[str] = []
 

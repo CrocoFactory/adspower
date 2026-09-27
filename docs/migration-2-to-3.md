@@ -7,6 +7,7 @@
 Version 3 makes these intentional breaking changes:
 
 - API V2 is the default for browser profiles;
+- the old `adspower.sync_api` and `adspower.async_api` packages are removed;
 - configuration belongs to a client instance;
 - profile data and running browser sessions are separate objects;
 - automatic window maximization is disabled;
@@ -112,8 +113,10 @@ legacy = client.v1.profiles.create(group_id="0", name="example")
 profiles = client.v1.profiles.list(group_id="0")
 ```
 
-The old `adspower.sync_api` and `adspower.async_api` imports remain available for
-one release cycle. They should not be used by new code and may be removed in 4.0.
+The old `adspower.sync_api` and `adspower.async_api` packages were removed in
+3.0. They relied on global class-level configuration and cannot be mixed with
+the new clients. Use the explicit `client.v1` namespace only where V1 profile
+compatibility is required.
 
 ## Dependency changes
 
