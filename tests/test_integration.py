@@ -23,6 +23,7 @@ def _integration_profile_id() -> str:
 
 @pytest.fixture(scope="module")
 def test_page_url() -> Iterator[str]:
+    _integration_profile_id()
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
             body = b"<!doctype html><title>AdsPower SDK Test</title><p id='message'>hello</p>"

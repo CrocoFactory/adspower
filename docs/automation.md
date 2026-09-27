@@ -25,9 +25,10 @@ with session.selenium() as driver:
     driver.get("https://example.com")
 ```
 
-The adapter uses the debugger address returned by AdsPower. When a WebDriver path
-is returned, it is passed to Selenium's public `Service` API. The adapter never
-starts AdsPower Chromium as an ordinary Selenium-managed browser.
+The adapter uses the debugger address returned by AdsPower. A returned WebDriver
+path is used only when that path exists in the Python process filesystem; this
+keeps Docker and remote AdsPower setups working with Selenium Manager. The
+adapter never starts AdsPower Chromium as an ordinary Selenium-managed browser.
 
 Headless mode belongs to the AdsPower start request:
 
@@ -49,6 +50,30 @@ with session.selenium(
 
 You may pass a configured `selenium.webdriver.ChromeOptions` through `options`.
 
+Custom services and driver options are passed through without being recreated:
+
+```python
+from selenium.webdriver.chrome.service import Service
+
+service = Service(port=9515, service_args=["--verbose"])
+with session.selenium(
+    service=service,
+    webdriver_kwargs={},
+) as driver:
+    ...
+```
+
+Use `service_kwargs` when constructing a `Service` object is more convenient.
+`service` and `service_kwargs` cannot be supplied together. Firefox attachment
+is selected with `browser="firefox"` or automatically when AdsPower returns a
+Marionette port:
+
+```python
+session = client.browsers.start(profile_no="42")
+with session.selenium(browser="firefox") as driver:
+    driver.get("https://example.com")
+```
+
 ## Sync Playwright
 
 ```python
@@ -66,6 +91,19 @@ launch Playwright's bundled browser.
 
 Playwright's CDP attachment applies to Chromium-based browsers and may expose
 fewer capabilities than a browser launched directly through Playwright.
+
+Current Playwright connection options and future options are both supported:
+
+```python
+with session.playwright(
+    timeout=60_000,
+    slow_mo=50,
+    no_defaults=True,
+    artifacts_dir="artifacts",
+    connect_kwargs={"future_option": "value"},
+) as browser:
+    ...
+```
 
 ## Async Playwright
 

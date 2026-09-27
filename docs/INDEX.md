@@ -11,6 +11,8 @@ each topic can be read independently.
   tolerant response models, groups, and browser lifecycle.
 - [Automation adapters](automation.md) — Selenium and Playwright attachment,
   endpoint selection, cleanup, and optional dependencies.
+- [API coverage](api-coverage.md) — supported Local API operations, endpoints,
+  sync/async parity, and deliberate limitations.
 - [Migration from 2.x to 3.x](migration-2-to-3.md) — breaking changes and direct
   replacements for the old class-level APIs.
 

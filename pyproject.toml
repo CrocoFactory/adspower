@@ -77,4 +77,5 @@ source = [
     "adspower.models",
     "adspower.rate_limit",
     "adspower.transport",
+    "adspower.security",
 ]

@@ -46,7 +46,7 @@ jobs:
       - run: pip install poetry
       - run: poetry install --all-extras
       - run: poetry run ruff check adspower tests
-      - run: poetry run pytest tests/test_v3_client.py --cov --cov-report=term-missing --cov-fail-under=85
+      - run: poetry run pytest tests/test_v3_client.py tests/test_modernization.py --cov --cov-report=term-missing --cov-fail-under=90
 
   package:
     runs-on: ubuntu-latest

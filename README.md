@@ -23,6 +23,8 @@ Docker and private remote AdsPower deployments.
 ## Features
 
 - Sync and async profile CRUD through AdsPower API V2.
+- Profile regrouping, cache deletion, cookie retrieval, sharing, and paginated name search.
+- Proxy list and extension category resources with sync/async parity.
 - Browser start/stop with Selenium, sync Playwright and async Playwright.
 - API-key authentication, configurable endpoints and timeouts.
 - Docker/remote CDP endpoint handling.
@@ -122,6 +124,29 @@ groups = client.groups.list(name=group.name)
 serialized in the shape expected by the current V2 API. When omitted, profile
 creation receives a documented no-proxy configuration and a minimal valid
 fingerprint configuration; explicit values always win.
+
+`platform` is the account domain (for example `facebook.com`), not an operating
+system. Browser-kernel selection belongs in `fingerprint_config`.
+
+## Proxies, categories, and raw API
+
+```python
+proxy_ids = client.proxies.create(
+    type="http", host="203.0.113.10", port="8000", remark="pool-a",
+)
+proxies = client.proxies.list(proxy_ids=proxy_ids)
+categories = client.categories.list(page_size=100)
+
+# Reach a new Local API endpoint before this SDK has a typed wrapper.
+envelope = client.request(
+    "POST", "/api/v2/future-endpoint", json={"future": "value"}, unwrap=False,
+)
+```
+
+Raw requests accept only relative AdsPower paths, so the bearer token cannot be
+sent accidentally to another host. Request errors include method/path context
+but never include request payloads; model representations redact passwords,
+cookies, API keys, 2FA secrets, and tokens.
 
 ## Configuration
 

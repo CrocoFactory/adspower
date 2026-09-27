@@ -7,6 +7,10 @@ class AdsPowerError(Exception):
     """Base class for all errors raised by the modern client."""
 
 
+class AdsPowerValidationError(AdsPowerError, ValueError):
+    """Raised when a request violates a documented client-side constraint."""
+
+
 class AdsPowerConnectionError(AdsPowerError):
     pass
 
@@ -22,10 +26,14 @@ class AdsPowerAPIError(AdsPowerError):
         *,
         code: int | str | None = None,
         response: dict[str, Any] | None = None,
+        method: str | None = None,
+        path: str | None = None,
     ) -> None:
         super().__init__(message)
         self.code = code
         self.response = response
+        self.method = method
+        self.path = path
 
 
 class ProfileNotFoundError(AdsPowerAPIError):

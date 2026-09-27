@@ -3,9 +3,21 @@
 from .async_client import AsyncAdsPowerClient, AsyncBrowserSession
 from .client import AdsPowerClient, BrowserSession
 from .config import ClientConfig
-from .models import BrowserConnection, Group, Profile, ProxySoftware, ScreenResolution
+from .exceptions import AdsPowerValidationError
+from .models import (
+    BrowserConnection,
+    BrowserStatus,
+    Category,
+    Group,
+    Profile,
+    ProfileSelector,
+    Proxy,
+    ProxySoftware,
+    RunningBrowser,
+    ScreenResolution,
+)
 from .rate_limit import RateLimit
-from .types import FingerprintConfig, ProxyConfig
+from .types import AdsPowerBool, CacheType, FingerprintConfig, ProfileProxyType, ProxyConfig, StoredProxyType
 
 __version__ = "3.0.0"
 
@@ -14,13 +26,22 @@ __all__ = [
     "AsyncAdsPowerClient",
     "AsyncBrowserSession",
     "BrowserConnection",
+    "BrowserStatus",
     "BrowserSession",
     "ClientConfig",
+    "Category",
+    "AdsPowerBool",
+    "AdsPowerValidationError",
     "FingerprintConfig",
     "Group",
     "Profile",
+    "ProfileSelector",
+    "ProfileProxyType",
+    "Proxy",
     "ProxyConfig",
     "ProxySoftware",
     "RateLimit",
     "ScreenResolution",
+    "StoredProxyType",
+    "RunningBrowser",
 ]

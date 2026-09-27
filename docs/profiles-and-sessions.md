@@ -15,6 +15,11 @@ profile = client.profiles.update(profile.id, name="renamed")
 client.profiles.delete(profile.id)
 ```
 
+`update()` returns a server profile only when AdsPower includes one in its
+response; otherwise it returns `None` because the update endpoint commonly
+returns an empty data object. Use `refresh=True` when a follow-up representation
+is explicitly wanted.
+
 The SDK translates `page_size` to AdsPower V2's `limit` field and sends profile
 IDs as arrays for V2 list and delete calls, as required by the current API.
 
@@ -43,7 +48,7 @@ always take precedence.
 profile = client.profiles.create(
     name="example",
     group_id="0",
-    platform="windows",
+    platform="facebook.com",
     tabs=["https://example.com"],
     user_proxy_config={"proxy_soft": "other"},
     fingerprint_config={"screen_resolution": "1366_768"},
@@ -52,6 +57,24 @@ profile = client.profiles.create(
 
 Proxy-provider fields accept strings. This keeps the runtime forward-compatible
 when AdsPower introduces a provider that the SDK does not know yet.
+
+Profile creation accepts either `proxyid` or `user_proxy_config`; when neither
+is supplied the SDK sends the documented no-proxy default. `fingerprint_config=None`
+has the same effect as omission and receives the minimal documented default.
+
+Batch and account operations are available in both clients:
+
+```python
+client.profiles.delete_many(["a", "b"])
+client.profiles.move(["a", "b"], group_id="123")
+client.profiles.delete_cache(["a"], ["local_storage", "indexeddb"])
+cookies = client.profiles.cookies(profile_no="42")
+matches = client.profiles.find_all_by_name("example", max_pages=5)
+client.profiles.share(["a"], "recipient@example.com", content=["name", "tabs"])
+```
+
+Cookie JSON is normalized to `list[dict]`. Credentials, cookies, and proxy
+passwords are redacted from model representations.
 
 ## Groups
 
@@ -75,6 +98,10 @@ session = client.browsers.start(profile.id, headless=False)
 print(session.connection.selenium)
 print(session.connection.playwright_cdp)
 session.stop()
+
+session = client.browsers.start(profile_no="42")
+status = client.browsers.status(profile_no="42")
+active = client.browsers.list_active()
 ```
 
 `BrowserConnection` parses:

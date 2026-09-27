@@ -17,23 +17,21 @@ from .exceptions import (
 from .rate_limit import AsyncRateLimiter, RateLimit, SyncRateLimiter
 
 
-def parse_response(response: httpx.Response) -> Any:
+def parse_response(response: httpx.Response, *, method: str = "GET", path: str = "") -> Any:
     try:
         response.raise_for_status()
     except httpx.HTTPStatusError as exc:
         if response.status_code in (401, 403):
-            raise AuthenticationError("AdsPower rejected the API credentials") from exc
+            raise AuthenticationError(f"AdsPower rejected credentials ({method} {path})", method=method, path=path) from exc
         if response.status_code == 429:
-            raise RateLimitError("AdsPower rate limit exceeded") from exc
-        raise AdsPowerAPIError(
-            f"AdsPower returned HTTP {response.status_code}", response={"text": response.text}
-        ) from exc
+            raise RateLimitError(f"AdsPower rate limit exceeded ({method} {path})", method=method, path=path) from exc
+        raise AdsPowerAPIError(f"AdsPower returned HTTP {response.status_code} ({method} {path})", response={"text": response.text}, method=method, path=path) from exc
     try:
         payload = response.json()
     except ValueError as exc:
-        raise AdsPowerAPIError("AdsPower returned invalid JSON") from exc
+        raise AdsPowerAPIError(f"AdsPower returned invalid JSON ({method} {path})", method=method, path=path) from exc
     if not isinstance(payload, Mapping):
-        raise AdsPowerAPIError("AdsPower returned a non-object JSON response")
+        return payload
     code = payload.get("code")
     if code not in (0, "0", None):
         message = str(payload.get("msg") or payload.get("message") or "Unknown AdsPower API error")
@@ -45,7 +43,7 @@ def parse_response(response: httpx.Response) -> Any:
             error_type = RateLimitError
         elif "not found" in lowered and "profile" in lowered:
             error_type = ProfileNotFoundError
-        raise error_type(message, code=code, response=dict(payload))
+        raise error_type(f"{message} ({method} {path})", code=code, response=dict(payload), method=method, path=path)
     return payload.get("data", payload)
 
 
@@ -76,8 +74,9 @@ class SyncTransport:
         path: str,
         *,
         params: Mapping[str, Any] | None = None,
-        json: Mapping[str, Any] | None = None,
+        json: Any = None,
         timeout: float | httpx.Timeout | None = None,
+        unwrap: bool = True,
     ) -> Any:
         limiter = self._endpoint_limiters.get(path, self._limiter)
         if limiter:
@@ -91,7 +90,7 @@ class SyncTransport:
             raise AdsPowerTimeoutError(f"AdsPower request timed out: {path}") from exc
         except (httpx.ConnectError, httpx.NetworkError, httpx.InvalidURL) as exc:
             raise AdsPowerConnectionError(f"Cannot connect to AdsPower at {self.config.base_url}") from exc
-        return parse_response(response)
+        return parse_response(response, method=method, path=path) if unwrap else _parse_envelope(response, method=method, path=path)
 
     def close(self) -> None:
         self._client.close()
@@ -124,8 +123,9 @@ class AsyncTransport:
         path: str,
         *,
         params: Mapping[str, Any] | None = None,
-        json: Mapping[str, Any] | None = None,
+        json: Any = None,
         timeout: float | httpx.Timeout | None = None,
+        unwrap: bool = True,
     ) -> Any:
         limiter = self._endpoint_limiters.get(path, self._limiter)
         if limiter:
@@ -139,7 +139,30 @@ class AsyncTransport:
             raise AdsPowerTimeoutError(f"AdsPower request timed out: {path}") from exc
         except (httpx.ConnectError, httpx.NetworkError, httpx.InvalidURL) as exc:
             raise AdsPowerConnectionError(f"Cannot connect to AdsPower at {self.config.base_url}") from exc
-        return parse_response(response)
+        return parse_response(response, method=method, path=path) if unwrap else _parse_envelope(response, method=method, path=path)
 
     async def close(self) -> None:
         await self._client.aclose()
+
+
+def _parse_envelope(response: httpx.Response, *, method: str, path: str) -> dict[str, Any]:
+    """Validate an API response while preserving its full envelope."""
+    try:
+        response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        if response.status_code in (401, 403):
+            raise AuthenticationError(f"AdsPower rejected credentials ({method} {path})", method=method, path=path) from exc
+        if response.status_code == 429:
+            raise RateLimitError(f"AdsPower rate limit exceeded ({method} {path})", method=method, path=path) from exc
+        raise AdsPowerAPIError(f"AdsPower returned HTTP {response.status_code} ({method} {path})", method=method, path=path) from exc
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        raise AdsPowerAPIError(f"AdsPower returned invalid JSON ({method} {path})", method=method, path=path) from exc
+    if not isinstance(payload, Mapping):
+        return {"data": payload}
+    code = payload.get("code")
+    if code not in (0, "0", None):
+        message = str(payload.get("msg") or payload.get("message") or "Unknown AdsPower API error")
+        raise AdsPowerAPIError(f"{message} ({method} {path})", code=code, response=dict(payload), method=method, path=path)
+    return dict(payload)

@@ -15,6 +15,8 @@ The implementation keeps shared behavior outside sync and async wrappers:
 - `automation.py` contains optional browser adapters;
 - `api.py` contains V2 profile/browser operations and the V1 group endpoints
   that remain part of the current AdsPower contract.
+- `security.py` provides recursive redaction for model representations and
+  diagnostics.
 
 The transport uses only public HTTPX APIs. A request is sent directly, without a
 status preflight. HTTP errors, network errors, JSON failures, and AdsPower

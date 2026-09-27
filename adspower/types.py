@@ -5,7 +5,9 @@ from typing import Any, Literal
 from typing_extensions import NotRequired, TypedDict
 
 ProxySoft = str
-ProxyType = Literal['http', 'https', 'socks5']
+ProfileProxyType = Literal["http", "https", "socks5"]
+StoredProxyType = Literal["http", "https", "socks5", "ssh"]
+ProxyType = ProfileProxyType
 WebRtcType = Literal['forward', 'proxy', 'local', 'disabled']
 LocationType = Literal['ask', 'allow', 'block']
 FlashType = Literal['allow', 'block']
@@ -13,13 +15,15 @@ DeviceNameType = Literal[0, 1, 2]
 MediaDeviceType = Literal[0, 1, 2]
 GPUType = Literal[0, 1, 2]
 WebGLVersion = Literal[0, 2, 3]
-IntBool = Literal[0, 1]
+AdsPowerBool = Literal[0, 1, "0", "1"]
+IntBool = AdsPowerBool
+CacheType = Literal["local_storage", "indexeddb", "extension_cache", "cookie", "history", "image_file"]
 
 
 class ProxyConfig(TypedDict, total=False):
     soft: ProxySoft
     proxy_soft: str
-    type: ProxyType | str
+    type: ProfileProxyType | str
     proxy_type: str
     host: str
     proxy_host: str
@@ -45,7 +49,7 @@ class MediaDeviceConfig(TypedDict):
 
 class RandomUserAgent(TypedDict):
     ua_browser: list[str]
-    ua_version: list[int]
+    ua_version: list[str]
     ua_system_version: list[str]
 
 
@@ -56,7 +60,7 @@ class MacAddressConfig(TypedDict):
 
 class BrowserKernelConfig(TypedDict):
     version: str
-    type: str
+    type: Literal["chrome", "firefox"] | str
 
 
 class FingerprintConfig(TypedDict):
@@ -96,3 +100,5 @@ class FingerprintConfig(TypedDict):
     mac_address_config: NotRequired[MacAddressConfig]
     browser_kernel_config: NotRequired[BrowserKernelConfig]
     gpu: NotRequired[GPUType]
+    tls_switch: NotRequired[AdsPowerBool]
+    tls: NotRequired[str]
