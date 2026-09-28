@@ -76,8 +76,10 @@ services:
 ```
 
 Returned Selenium and Playwright endpoints must also be reachable from the
-container. The SDK prefers exact endpoints returned by AdsPower and only derives
-a Selenium debugger address from `base_url` plus `debug_port` when necessary.
+container. By default, loopback endpoints are rewritten to the Local API host
+while preserving the returned port and CDP path/browser id. Set `browser_host`
+when dynamic browser ports are exposed on a different host, or set
+`browser_endpoint_policy="exact"` to keep returned hosts unchanged.
 
 ## Private remote hosts
 
@@ -106,16 +108,24 @@ client = AdsPowerClient(rate_limit=RateLimit(requests=2, period=1.0))
 The sync limiter uses a thread lock. The async limiter uses an `asyncio.Lock`, so
 concurrent coroutines cannot pass the same timing check simultaneously.
 
-Endpoint-specific policies override the default limiter:
+Endpoint-specific policies are cumulative with the global limiter:
 
 ```python
 client = AdsPowerClient(
     rate_limit=RateLimit(2, 1.0),
     endpoint_limits={
-        "/api/v2/browser-profile/start": RateLimit(1, 1.0),
+        "/api/v2/browser-profile/cookies": RateLimit(1, 1.0),
     },
 )
 ```
+
+The generic limiter is a rolling-window client-side guard, not an emulation of
+AdsPower's undisclosed server algorithm. `AdsPowerRatePolicy.conservative()`
+uses the documented 2 req/s global tier and the verified 1 req/s cookies
+exception. `AdsPowerRatePolicy.for_profile_count(n)` selects the documented
+2/5/10 req/s global tier from an explicit profile count. No automatic profile
+count discovery or automatic write retries are performed. Separate client
+instances and processes do not coordinate their budgets.
 
 ## References
 

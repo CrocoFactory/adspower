@@ -219,13 +219,13 @@ async def test_async_parity_and_exact_contract() -> None:
         api_key="async-secret",
         transport=httpx.MockTransport(handler),
     ) as client:
-        profiles = await client.profiles.list(name="test")
+        profiles = await client.profiles.list()
 
     assert profiles[0].id == "async"
     assert profiles[0].extra["new"] == 1
     assert requests[0].headers["Authorization"] == "Bearer async-secret"
     assert requests[0].url.path == "/api/v2/browser-profile/list"
-    assert json.loads(requests[0].content) == {"page": 1, "limit": 100, "name": "test"}
+    assert json.loads(requests[0].content) == {"page": 1, "limit": 100}
 
 
 def test_sync_limiter_with_fake_clock() -> None:
@@ -326,7 +326,7 @@ async def test_async_crud_browser_groups_health() -> None:
 
     async with AsyncAdsPowerClient(transport=httpx.MockTransport(handler)) as client:
         assert (await client.profiles.create(name="x")).id == "p1"
-        assert (await client.profiles.update("p1", name="new")).name == "new"
+        assert await client.profiles.update("p1", name="new") is None
         await client.profiles.delete("p1")
         assert (await client.groups.create("g")).id == "g1"
         assert (await client.groups.list())[0].id == "g1"
@@ -381,7 +381,7 @@ def test_playwright_cleanup_is_idempotent_and_preserves_user_error() -> None:
             calls.append("disconnect")
             raise RuntimeError("cleanup")
 
-    session = PlaywrightSession(BrowserConnection(playwright_cdp="ws://exact"), stop=lambda: calls.append("stop"))
+    session = PlaywrightSession(BrowserConnection(playwright_cdp_url="ws://exact"), stop=lambda: calls.append("stop"))
     session.browser = Browser()
     session._playwright = type("Runtime", (), {"stop": lambda self: calls.append("runtime")})()
     session.close(preserve_error=True)
@@ -404,7 +404,7 @@ async def test_async_playwright_cleanup_order_and_idempotency() -> None:
     async def stop() -> None:
         calls.append("stop")
 
-    session = AsyncPlaywrightSession(BrowserConnection(playwright_cdp="ws://exact"), stop=stop)
+    session = AsyncPlaywrightSession(BrowserConnection(playwright_cdp_url="ws://exact"), stop=stop)
     session.browser = Browser()
     session._playwright = Runtime()
     await session.close()
@@ -458,7 +458,7 @@ def test_selenium_adapter_uses_endpoint_without_headless(monkeypatch: pytest.Mon
 
     monkeypatch.setattr(automation, "urlopen", lambda *_args, **_kwargs: VersionResponse())
     adapter = SeleniumSession(
-        BrowserConnection(selenium="remote:9222", webdriver="/driver"),
+        BrowserConnection(selenium_debugger_address="remote:9222", webdriver="/driver"),
         stop=lambda: calls.append("stop"),
         page_load_strategy="eager",
     )
@@ -498,7 +498,7 @@ def test_sync_playwright_adapter_uses_exact_cdp(monkeypatch: pytest.MonkeyPatch)
 
     monkeypatch.setattr(playwright.sync_api, "sync_playwright", lambda: Starter())
     adapter = PlaywrightSession(
-        BrowserConnection(playwright_cdp="ws://remote/exact"),
+        BrowserConnection(playwright_cdp_url="ws://remote/exact"),
         stop=lambda: calls.append("profile.stop"),
     )
     with adapter as browser:
@@ -536,7 +536,7 @@ async def test_async_playwright_adapter_uses_exact_cdp(monkeypatch: pytest.Monke
         calls.append("profile.stop")
 
     monkeypatch.setattr(playwright.async_api, "async_playwright", lambda: Starter())
-    adapter = AsyncPlaywrightSession(BrowserConnection(playwright_cdp="ws://remote/exact"), stop=stop)
+    adapter = AsyncPlaywrightSession(BrowserConnection(playwright_cdp_url="ws://remote/exact"), stop=stop)
     async with adapter as browser:
         assert isinstance(browser, Browser)
     assert calls == ["ws://remote/exact", "browser.close", "profile.stop", "runtime.stop"]

@@ -114,7 +114,8 @@ profile = client.profiles.create(
 
 profiles = client.profiles.list(group_id="0", page=1, page_size=100)
 profile = client.profiles.get(profile.id)
-profile = client.profiles.update(profile.id, name="renamed")
+client.profiles.update(profile.id, name="renamed")
+profile = client.profiles.update(profile.id, name="renamed-again", refresh=True)
 client.profiles.delete(profile.id)
 
 group = client.groups.create("automation", remark="managed by SDK")
@@ -133,7 +134,7 @@ system. Browser-kernel selection belongs in `fingerprint_config`.
 
 ```python
 proxy_ids = client.proxies.create(
-    type="http", host="203.0.113.10", port="8000", remark="pool-a",
+    proxy_type="http", host="203.0.113.10", port="8000", remark="pool-a",
 )
 proxies = client.proxies.list(proxy_ids=proxy_ids)
 categories = client.categories.list(page_size=100)
@@ -167,11 +168,18 @@ client = AdsPowerClient(
     api_key="your-api-key",
     timeout=60.0,
     browser_start_timeout=90.0,
+    browser_host="192.168.1.21",  # Optional if browser ports use another host.
 )
 ```
 
 API keys are sent as `Authorization: Bearer ...` and are redacted from client
 representations. Keep a remote Local API port on a private network or VPN.
+
+Rate limiting is opt-in. `AdsPowerRatePolicy.conservative()` provides a
+client-side compliance guard using the documented lowest global tier and the
+verified 1 req/s cookie endpoint. It does **not** reproduce AdsPower's
+undisclosed server-side algorithm. Global and endpoint limits are cumulative,
+and separate clients/processes do not share their in-memory budgets.
 
 ## Automation options
 

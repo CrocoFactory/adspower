@@ -72,7 +72,7 @@ def test_real_disposable_proxy_crud() -> None:
             assert ids
             proxy_id = ids[0]
             assert any(item.id == proxy_id for item in client.proxies.list(proxy_ids=[proxy_id]))
-            client.proxies.update(proxy_id, remark="adspower-sdk-integration-updated")
+            client.proxies.update(proxy_id, port=int(port), remark="adspower-sdk-integration-updated")
         finally:
             if proxy_id is not None:
                 client.proxies.delete(proxy_id)

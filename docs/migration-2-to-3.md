@@ -56,9 +56,10 @@ profile.delete()
 After:
 
 ```python
-profiles = client.profiles.list(name="example")
+profiles = client.profiles.find_all_by_name("example")
 profile = client.profiles.create(group_id=group.id, name="example")
-profile = client.profiles.update(profile.id, name="renamed")
+client.profiles.update(profile.id, name="renamed")
+profile = client.profiles.update(profile.id, name="renamed-again", refresh=True)
 client.profiles.delete(profile.id)
 ```
 
@@ -103,8 +104,10 @@ removed. Use the Local API V2 names (`proxy_host`, `proxy_port`, and
 
 ## Playwright behavior
 
-Playwright now uses AdsPower's returned CDP websocket verbatim. This fixes Docker
-and remote-host attachment where rebuilding `http://localhost:<port>` was wrong.
+Playwright preserves AdsPower's returned CDP path/browser identifier. For remote
+Local API deployments the default endpoint policy rewrites loopback hosts to the
+configured API host; use `browser_host=` when browser debug ports live on a
+different host, or `browser_endpoint_policy="exact"` to disable rewriting.
 It also defaults to `no_defaults=True` to preserve the existing profile-managed
 browser context.
 

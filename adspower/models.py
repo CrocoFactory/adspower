@@ -5,7 +5,7 @@ from enum import Enum
 from typing import Any, Mapping
 from urllib.parse import urlsplit, urlunsplit
 
-from .exceptions import AdsPowerValidationError
+from .exceptions import AdsPowerResponseError, AdsPowerValidationError
 from .security import redact_sensitive
 
 
@@ -16,7 +16,26 @@ def _format_host(host: str) -> str:
     return host
 
 
+def _first_present(data: Mapping[str, Any], *keys: str) -> Any:
+    for key in keys:
+        value = data.get(key)
+        if value is not None:
+            return value
+    return None
+
+
+def _optional_int(value: Any, *, field_name: str) -> int | None:
+    if value in (None, ""):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise AdsPowerResponseError(f"AdsPower returned an invalid {field_name!r} value") from exc
+
+
 class ProxySoftware(str, Enum):
+    """Known AdsPower proxy software/provider identifiers."""
+
     BRIGHTDATA = "brightdata"
     BRIGHTAUTO = "brightauto"
     OXYLABS_AUTO = "oxylabsauto"
@@ -31,6 +50,8 @@ class ProxySoftware(str, Enum):
 
 
 class ScreenResolution:
+    """Helpers for serializing AdsPower screen-resolution values."""
+
     @staticmethod
     def fixed(width: int, height: int) -> str:
         if width <= 0 or height <= 0:
@@ -40,8 +61,10 @@ class ScreenResolution:
 
 @dataclass(slots=True)
 class Profile:
+    """Persistent AdsPower browser-profile data returned by the Local API."""
+
     id: str
-    number: str | None = None
+    profile_no: str | None = None
     name: str | None = None
     group_id: str | None = None
     group_name: str | None = None
@@ -56,36 +79,58 @@ class Profile:
 
     @classmethod
     def from_api(cls, data: Mapping[str, Any]) -> "Profile":
-        profile_id = data.get("profile_id") or data.get("user_id") or data.get("id")
+        profile_id = _first_present(data, "profile_id", "user_id", "id")
         if profile_id in (None, ""):
-            raise ValueError("Profile response does not contain a profile id")
+            raise AdsPowerResponseError("Profile response does not contain a profile id")
+
+        proxy_config = data.get("user_proxy_config")
+        if proxy_config is not None and not isinstance(proxy_config, Mapping):
+            raise AdsPowerResponseError("Profile response contains a malformed user_proxy_config")
+
         known = {
-            "profile_id", "user_id", "id", "profile_no", "serial_number",
-            "name", "group_id", "user_proxy_config",
-            "group_name", "platform", "username", "remark", "category_id",
-            "created_time", "last_open_time",
+            "profile_id",
+            "user_id",
+            "id",
+            "profile_no",
+            "serial_number",
+            "name",
+            "group_id",
+            "user_proxy_config",
+            "group_name",
+            "platform",
+            "domain_name",
+            "username",
+            "remark",
+            "category_id",
+            "created_time",
+            "last_open_time",
         }
-        number = data.get("profile_no", data.get("serial_number"))
+        profile_no = _first_present(data, "profile_no", "serial_number")
         return cls(
             id=str(profile_id),
-            number=str(number) if number is not None else None,
+            profile_no=str(profile_no) if profile_no is not None else None,
             name=data.get("name"),
             group_id=str(data["group_id"]) if data.get("group_id") is not None else None,
             group_name=data.get("group_name"),
-            platform=data.get("platform", data.get("domain_name")),
+            platform=_first_present(data, "platform", "domain_name"),
             username=data.get("username"),
             remark=data.get("remark"),
             category_id=str(data["category_id"]) if data.get("category_id") is not None else None,
             created_time=str(data["created_time"]) if data.get("created_time") is not None else None,
             last_open_time=str(data["last_open_time"]) if data.get("last_open_time") is not None else None,
-            user_proxy_config=data.get("user_proxy_config"),
+            user_proxy_config=dict(proxy_config) if isinstance(proxy_config, Mapping) else None,
             extra={key: value for key, value in data.items() if key not in known},
         )
+
+    @property
+    def number(self) -> str | None:
+        """Compatibility alias for the pre-freeze `profile_no` field name."""
+        return self.profile_no
 
     def __repr__(self) -> str:
         values = {
             "id": self.id,
-            "number": self.number,
+            "profile_no": self.profile_no,
             "name": self.name,
             "group_id": self.group_id,
             "group_name": self.group_name,
@@ -103,6 +148,8 @@ class Profile:
 
 @dataclass(slots=True)
 class Group:
+    """AdsPower profile group."""
+
     id: str
     name: str | None = None
     remark: str | None = None
@@ -110,13 +157,13 @@ class Group:
 
     @classmethod
     def from_api(cls, data: Mapping[str, Any]) -> "Group":
-        group_id = data.get("group_id", data.get("id"))
-        if group_id is None:
-            raise ValueError("Group response does not contain a group id")
+        group_id = _first_present(data, "group_id", "id")
+        if group_id in (None, ""):
+            raise AdsPowerResponseError("Group response does not contain a group id")
         known = {"group_id", "id", "group_name", "name", "remark"}
         return cls(
             id=str(group_id),
-            name=data.get("group_name", data.get("name")),
+            name=_first_present(data, "group_name", "name"),
             remark=data.get("remark"),
             extra={key: value for key, value in data.items() if key not in known},
         )
@@ -124,8 +171,10 @@ class Group:
 
 @dataclass(slots=True)
 class BrowserConnection:
-    selenium: str | None = None
-    playwright_cdp: str | None = None
+    """Connection information for a browser process started by AdsPower."""
+
+    selenium_debugger_address: str | None = None
+    playwright_cdp_url: str | None = None
     debug_port: int | None = None
     webdriver: str | None = None
     marionette_port: int | None = None
@@ -133,43 +182,67 @@ class BrowserConnection:
     extra: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
-    def from_api(cls, data: Mapping[str, Any], *, base_url: str) -> "BrowserConnection":
+    def from_api(
+        cls,
+        data: Mapping[str, Any],
+        *,
+        base_url: str,
+        browser_host: str | None = None,
+        endpoint_policy: str = "rewrite_loopback_to_api_host",
+    ) -> "BrowserConnection":
         ws_value = data.get("ws")
+        if ws_value is not None and not isinstance(ws_value, Mapping):
+            raise AdsPowerResponseError("Browser response contains a malformed ws object")
         ws: Mapping[str, Any] = ws_value if isinstance(ws_value, Mapping) else {}
-        debug_port_raw = data.get("debug_port")
-        debug_port = int(debug_port_raw) if debug_port_raw not in (None, "") else None
-        marionette_raw = data.get("marionette_port")
-        marionette_port = int(marionette_raw) if marionette_raw not in (None, "") else None
-        selenium = ws.get("selenium") or data.get("selenium")
-        playwright = ws.get("puppeteer") or data.get("playwright_cdp")
+
+        debug_port = _optional_int(data.get("debug_port"), field_name="debug_port")
+        marionette_port = _optional_int(data.get("marionette_port"), field_name="marionette_port")
+        selenium = _first_present(ws, "selenium") or data.get("selenium")
+        playwright = _first_present(ws, "puppeteer") or data.get("playwright_cdp")
+
         api_host = urlsplit(base_url).hostname or "127.0.0.1"
+        target_host = browser_host or api_host
         loopback_hosts = {"127.0.0.1", "localhost", "::1"}
-        marionette_host = data.get("marionette_host") or (
-            api_host if marionette_port is not None and api_host not in loopback_hosts else None
-        )
-        if selenium and api_host not in loopback_hosts:
+        rewrite_loopback = endpoint_policy == "rewrite_loopback_to_api_host"
+
+        marionette_host = data.get("marionette_host")
+        if marionette_host is None and marionette_port is not None and target_host not in loopback_hosts:
+            marionette_host = target_host
+
+        if selenium and rewrite_loopback and target_host not in loopback_hosts:
             parsed_selenium = urlsplit(f"//{selenium}")
             if parsed_selenium.hostname in loopback_hosts and parsed_selenium.port:
-                selenium = f"{_format_host(api_host)}:{parsed_selenium.port}"
-        if playwright and api_host not in loopback_hosts:
+                selenium = f"{_format_host(target_host)}:{parsed_selenium.port}"
+
+        if playwright and rewrite_loopback and target_host not in loopback_hosts:
             parsed_playwright = urlsplit(str(playwright))
             if parsed_playwright.hostname in loopback_hosts:
                 port = f":{parsed_playwright.port}" if parsed_playwright.port else ""
                 playwright = urlunsplit(
                     (
                         parsed_playwright.scheme,
-                        f"{_format_host(api_host)}{port}",
+                        f"{_format_host(target_host)}{port}",
                         parsed_playwright.path,
                         parsed_playwright.query,
                         parsed_playwright.fragment,
                     )
                 )
+
         if debug_port is not None and not selenium:
-            selenium = f"{_format_host(api_host)}:{debug_port}"
-        known = {"ws", "debug_port", "webdriver", "selenium", "playwright_cdp", "marionette_port", "marionette_host"}
+            selenium = f"{_format_host(target_host)}:{debug_port}"
+
+        known = {
+            "ws",
+            "debug_port",
+            "webdriver",
+            "selenium",
+            "playwright_cdp",
+            "marionette_port",
+            "marionette_host",
+        }
         return cls(
-            selenium=str(selenium) if selenium else None,
-            playwright_cdp=str(playwright) if playwright else None,
+            selenium_debugger_address=str(selenium) if selenium else None,
+            playwright_cdp_url=str(playwright) if playwright else None,
             debug_port=debug_port,
             webdriver=str(data["webdriver"]) if data.get("webdriver") else None,
             marionette_port=marionette_port,
@@ -177,15 +250,27 @@ class BrowserConnection:
             extra={key: value for key, value in data.items() if key not in known},
         )
 
+    @property
+    def selenium(self) -> str | None:
+        """Compatibility alias for `selenium_debugger_address`."""
+        return self.selenium_debugger_address
+
+    @property
+    def playwright_cdp(self) -> str | None:
+        """Compatibility alias for `playwright_cdp_url`."""
+        return self.playwright_cdp_url
+
 
 @dataclass(frozen=True, slots=True)
 class ProfileSelector:
+    """Exactly one profile identifier accepted by browser/profile selector endpoints."""
+
     profile_id: str | None = None
     profile_no: str | None = None
 
     def __post_init__(self) -> None:
-        if not self.profile_id and not self.profile_no:
-            raise AdsPowerValidationError("profile_id or profile_no is required")
+        if bool(self.profile_id) == bool(self.profile_no):
+            raise AdsPowerValidationError("exactly one of profile_id or profile_no is required")
 
     @property
     def payload(self) -> dict[str, str]:
@@ -196,6 +281,8 @@ class ProfileSelector:
 
 @dataclass(slots=True)
 class BrowserStatus:
+    """Current AdsPower browser activity state and optional connection details."""
+
     status: str
     connection: BrowserConnection | None = None
     extra: dict[str, Any] = field(default_factory=dict)
@@ -207,6 +294,8 @@ class BrowserStatus:
 
 @dataclass(slots=True)
 class RunningBrowser:
+    """One active browser returned by the Local API active-browser listing."""
+
     profile_id: str
     connection: BrowserConnection
     extra: dict[str, Any] = field(default_factory=dict)
@@ -214,8 +303,10 @@ class RunningBrowser:
 
 @dataclass(slots=True)
 class Proxy:
+    """Stored AdsPower proxy record."""
+
     id: str
-    type: str | None = None
+    proxy_type: str | None = None
     host: str | None = None
     port: str | None = None
     user: str | None = None
@@ -231,44 +322,92 @@ class Proxy:
 
     @classmethod
     def from_api(cls, data: Mapping[str, Any]) -> "Proxy":
-        proxy_id = data.get("proxy_id", data.get("id"))
+        proxy_id = _first_present(data, "proxy_id", "id")
         if proxy_id in (None, ""):
-            raise ValueError("Proxy response does not contain a proxy id")
-        known = {
-            "proxy_id", "id", "proxy_type", "type", "proxy_host", "host", "proxy_port", "port",
-            "proxy_user", "user", "proxy_password", "password", "proxy_url", "remark", "ipchecker",
-            "proxy_partner", "profile_count", "related_profile_no", "proxy_tags",
-        }
+            raise AdsPowerResponseError("Proxy response does not contain a proxy id")
+
         count = data.get("profile_count")
+        if count is not None:
+            try:
+                count = int(count)
+            except (TypeError, ValueError) as exc:
+                raise AdsPowerResponseError("Proxy response contains an invalid profile_count") from exc
+
+        related = data.get("related_profile_no", []) or []
+        tags = data.get("proxy_tags", []) or []
+        if not isinstance(related, list) or not isinstance(tags, list):
+            raise AdsPowerResponseError("Proxy response contains malformed list fields")
+        if not all(isinstance(item, Mapping) for item in tags):
+            raise AdsPowerResponseError("Proxy response contains a malformed proxy_tags item")
+
+        known = {
+            "proxy_id",
+            "id",
+            "proxy_type",
+            "type",
+            "proxy_host",
+            "host",
+            "proxy_port",
+            "port",
+            "proxy_user",
+            "user",
+            "proxy_password",
+            "password",
+            "proxy_url",
+            "remark",
+            "ipchecker",
+            "proxy_partner",
+            "profile_count",
+            "related_profile_no",
+            "proxy_tags",
+        }
+        port = _first_present(data, "proxy_port", "port")
         return cls(
             id=str(proxy_id),
-            type=data.get("proxy_type", data.get("type")),
-            host=data.get("proxy_host", data.get("host")),
-            port=str(data["proxy_port"] if data.get("proxy_port") is not None else data["port"]) if data.get("proxy_port", data.get("port")) is not None else None,
-            user=data.get("proxy_user", data.get("user")),
-            password=data.get("proxy_password", data.get("password")),
+            proxy_type=_first_present(data, "proxy_type", "type"),
+            host=_first_present(data, "proxy_host", "host"),
+            port=str(port) if port is not None else None,
+            user=_first_present(data, "proxy_user", "user"),
+            password=_first_present(data, "proxy_password", "password"),
             proxy_url=data.get("proxy_url"),
             remark=data.get("remark"),
             ipchecker=data.get("ipchecker"),
             proxy_partner=data.get("proxy_partner"),
-            profile_count=int(count) if count is not None else None,
-            related_profile_no=[str(item) for item in data.get("related_profile_no", []) or []],
-            proxy_tags=list(data.get("proxy_tags", []) or []),
+            profile_count=count,
+            related_profile_no=[str(item) for item in related],
+            proxy_tags=[dict(item) for item in tags],
             extra={key: value for key, value in data.items() if key not in known},
         )
 
+    @property
+    def type(self) -> str | None:
+        """Compatibility alias for `proxy_type`."""
+        return self.proxy_type
+
     def __repr__(self) -> str:
-        values = {key: value for key, value in self.__dict__.items()} if hasattr(self, "__dict__") else {
-            "id": self.id, "type": self.type, "host": self.host, "port": self.port, "user": self.user,
-            "password": self.password, "proxy_url": self.proxy_url, "remark": self.remark,
-            "ipchecker": self.ipchecker, "proxy_partner": self.proxy_partner, "profile_count": self.profile_count,
-            "related_profile_no": self.related_profile_no, "proxy_tags": self.proxy_tags, "extra": self.extra,
+        values = {
+            "id": self.id,
+            "proxy_type": self.proxy_type,
+            "host": self.host,
+            "port": self.port,
+            "user": self.user,
+            "password": self.password,
+            "proxy_url": self.proxy_url,
+            "remark": self.remark,
+            "ipchecker": self.ipchecker,
+            "proxy_partner": self.proxy_partner,
+            "profile_count": self.profile_count,
+            "related_profile_no": self.related_profile_no,
+            "proxy_tags": self.proxy_tags,
+            "extra": self.extra,
         }
         return f"Proxy({redact_sensitive(values)!r})"
 
 
 @dataclass(slots=True)
 class Category:
+    """AdsPower browser-profile category."""
+
     id: str
     name: str | None = None
     remark: str | None = None
@@ -276,13 +415,13 @@ class Category:
 
     @classmethod
     def from_api(cls, data: Mapping[str, Any]) -> "Category":
-        category_id = data.get("category_id", data.get("id"))
-        if category_id is None:
-            raise ValueError("Category response does not contain a category id")
+        category_id = _first_present(data, "category_id", "id")
+        if category_id in (None, ""):
+            raise AdsPowerResponseError("Category response does not contain a category id")
         known = {"category_id", "id", "category_name", "name", "remark"}
         return cls(
             id=str(category_id),
-            name=data.get("category_name", data.get("name")),
+            name=_first_present(data, "category_name", "name"),
             remark=data.get("remark"),
             extra={key: value for key, value in data.items() if key not in known},
         )

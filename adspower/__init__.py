@@ -2,8 +2,22 @@
 
 from .async_client import AsyncAdsPowerClient, AsyncBrowserSession
 from .client import AdsPowerClient, BrowserSession
-from .config import ClientConfig
-from .exceptions import AdsPowerValidationError
+from .config import BrowserEndpointPolicy, ClientConfig
+from .exceptions import (
+    AdsPowerAPIError,
+    AdsPowerAuthenticationError,
+    AdsPowerConfigurationError,
+    AdsPowerConnectionError,
+    AdsPowerError,
+    AdsPowerRateLimitError,
+    AdsPowerResponseError,
+    AdsPowerTimeoutError,
+    AdsPowerTransportError,
+    AdsPowerValidationError,
+    AuthenticationError,
+    ProfileNotFoundError,
+    RateLimitError,
+)
 from .models import (
     BrowserConnection,
     BrowserStatus,
@@ -16,32 +30,47 @@ from .models import (
     RunningBrowser,
     ScreenResolution,
 )
-from .rate_limit import RateLimit
+from .rate_limit import AdsPowerRatePolicy, RateLimit
 from .types import AdsPowerBool, CacheType, FingerprintConfig, ProfileProxyType, ProxyConfig, StoredProxyType
 
 __version__ = "3.0.0"
 
 __all__ = [
+    "AdsPowerAPIError",
+    "AdsPowerAuthenticationError",
     "AdsPowerClient",
+    "AdsPowerConfigurationError",
+    "AdsPowerConnectionError",
+    "AdsPowerError",
+    "AdsPowerRateLimitError",
+    "AdsPowerRatePolicy",
+    "AdsPowerResponseError",
+    "AdsPowerTimeoutError",
+    "AdsPowerTransportError",
+    "AdsPowerValidationError",
     "AsyncAdsPowerClient",
     "AsyncBrowserSession",
+    "AuthenticationError",
     "BrowserConnection",
-    "BrowserStatus",
+    "BrowserEndpointPolicy",
     "BrowserSession",
-    "ClientConfig",
+    "BrowserStatus",
+    "CacheType",
     "Category",
-    "AdsPowerBool",
-    "AdsPowerValidationError",
+    "ClientConfig",
     "FingerprintConfig",
     "Group",
     "Profile",
-    "ProfileSelector",
+    "ProfileNotFoundError",
     "ProfileProxyType",
+    "ProfileSelector",
     "Proxy",
     "ProxyConfig",
     "ProxySoftware",
     "RateLimit",
+    "RateLimitError",
+    "RunningBrowser",
     "ScreenResolution",
     "StoredProxyType",
-    "RunningBrowser",
+    "AdsPowerBool",
 ]

@@ -11,14 +11,15 @@ own a global client or an automation runtime.
 profile = client.profiles.create(name="example", group_id="0")
 profile = client.profiles.get(profile.id)
 profiles = client.profiles.list(group_id="0")
-profile = client.profiles.update(profile.id, name="renamed")
+client.profiles.update(profile.id, name="renamed")
+profile = client.profiles.update(profile.id, name="renamed-again", refresh=True)
 client.profiles.delete(profile.id)
 ```
 
-`update()` returns a server profile only when AdsPower includes one in its
-response; otherwise it returns `None` because the update endpoint commonly
-returns an empty data object. Use `refresh=True` when a follow-up representation
-is explicitly wanted.
+`update()` has a deterministic contract: it returns `None` by default, even if
+a server version happens to include profile fields in the update response.
+Use `refresh=True` to perform one documented follow-up query and return the
+fresh `Profile`.
 
 The SDK translates `page_size` to AdsPower V2's `limit` field and sends profile
 IDs as arrays for V2 list and delete calls, as required by the current API.
@@ -29,7 +30,8 @@ second list request just to recover an identifier.
 Known response fields are normalized:
 
 - `profile_id`, `user_id`, or `id` becomes `Profile.id`;
-- `profile_no` or `serial_number` becomes `Profile.number`;
+- `profile_no` or `serial_number` becomes `Profile.profile_no`;
+- `Profile.number` remains a compatibility property during the v3 transition;
 - `group_id` is represented as a string;
 - `user_proxy_config` remains available as a dictionary;
 - unrecognized fields are stored in `Profile.extra`.
@@ -139,3 +141,11 @@ handling, and exception mapping are shared with the sync API.
 - `adspower/api.py`
 - `adspower/client.py`
 - `adspower/async_client.py`
+
+
+## Name search
+
+Query Profile V2 does not currently document `name` or `name_filter` request
+fields. `find_by_name()` and `find_all_by_name()` therefore paginate the
+documented list endpoint and perform exact name matching client-side. Optional
+`group_id` filtering remains server-side.

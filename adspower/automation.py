@@ -106,13 +106,13 @@ class SeleniumSession(AbstractContextManager[Any]):
             if self.browser == "firefox" and not self.connection.marionette_port:
                 raise RuntimeError("Firefox AdsPower attachment requires a marionette_port returned by the Local API")
             if self.browser == "chromium":
-                if not self.connection.selenium:
+                if not self.connection.selenium_debugger_address:
                     raise RuntimeError("AdsPower did not return a Selenium debugger endpoint")
                 existing = getattr(options, "_experimental_options", {}).get("debuggerAddress")
-                if existing and existing != self.connection.selenium:
+                if existing and existing != self.connection.selenium_debugger_address:
                     raise ValueError("Selenium options already contain a different debuggerAddress")
                 if not existing:
-                    options.add_experimental_option("debuggerAddress", self.connection.selenium)
+                    options.add_experimental_option("debuggerAddress", self.connection.selenium_debugger_address)
             if self.page_load_strategy is not None:
                 options.page_load_strategy = self.page_load_strategy
             if self.service is not None:
@@ -131,12 +131,12 @@ class SeleniumSession(AbstractContextManager[Any]):
                 local_driver_path = not self.connection.marionette_host or _is_loopback_host(self.connection.marionette_host)
                 if self.connection.webdriver and local_driver_path and os.path.isfile(self.connection.webdriver) and "executable_path" not in service_kwargs:
                     service_kwargs["executable_path"] = self.connection.webdriver
-                elif self.browser == "chromium" and self.connection.selenium and not _is_loopback_debugger(self.connection.selenium):
+                elif self.browser == "chromium" and self.connection.selenium_debugger_address and not _is_loopback_debugger(self.connection.selenium_debugger_address):
                     # A path such as /remote/adspower/chromedriver is commonly
                     # meaningful only inside the AdsPower container. Selenium Manager
                     # otherwise sees only the local machine and may choose a driver
                     # for a different locally installed Chrome.
-                    options.browser_version = _remote_chromium_version(self.connection.selenium)
+                    options.browser_version = _remote_chromium_version(self.connection.selenium_debugger_address)
                 service = service_class(**service_kwargs)
             self.driver = webdriver_class(service=service, options=options, **self.webdriver_kwargs)
             return self.driver
@@ -148,18 +148,18 @@ class SeleniumSession(AbstractContextManager[Any]):
         if self._closed:
             return
         self._closed = True
-        cleanup_error: BaseException | None = None
+        cleanup_error: Exception | None = None
         try:
             if self.driver is not None:
                 self.driver.quit()
-        except BaseException as exc:
+        except Exception as exc:
             cleanup_error = exc
         finally:
             self.driver = None
         if self.stop_on_exit:
             try:
                 self._stop()
-            except BaseException as exc:
+            except Exception as exc:
                 cleanup_error = cleanup_error or exc
         if cleanup_error is not None and not preserve_error:
             raise cleanup_error
@@ -192,11 +192,11 @@ class PlaywrightSession(AbstractContextManager[Any]):
                 from playwright.sync_api import sync_playwright  # pyright: ignore[reportMissingImports]
             except ImportError as exc:
                 raise ImportError("Install Playwright support with: pip install 'adspower[playwright]'") from exc
-            if not self.connection.playwright_cdp:
+            if not self.connection.playwright_cdp_url:
                 raise RuntimeError("AdsPower did not return a Playwright CDP endpoint")
             connect_kwargs = _playwright_connect_kwargs(**self._connect_options)
             self._playwright = sync_playwright().start()
-            self.browser = self._playwright.chromium.connect_over_cdp(self.connection.playwright_cdp, **connect_kwargs)
+            self.browser = self._playwright.chromium.connect_over_cdp(self.connection.playwright_cdp_url, **connect_kwargs)
             return self.browser
         except BaseException:
             self.close(preserve_error=True)
@@ -206,11 +206,11 @@ class PlaywrightSession(AbstractContextManager[Any]):
         if self._closed:
             return
         self._closed = True
-        cleanup_error: BaseException | None = None
+        cleanup_error: Exception | None = None
         for cleanup in (lambda: self.browser.close() if self.browser is not None else None, self._stop if self.stop_on_exit else lambda: None, lambda: self._playwright.stop() if self._playwright is not None else None):
             try:
                 cleanup()
-            except BaseException as exc:
+            except Exception as exc:
                 cleanup_error = cleanup_error or exc
         self.browser = None
         self._playwright = None
@@ -245,11 +245,11 @@ class AsyncPlaywrightSession(AbstractAsyncContextManager[Any]):
                 from playwright.async_api import async_playwright  # pyright: ignore[reportMissingImports]
             except ImportError as exc:
                 raise ImportError("Install Playwright support with: pip install 'adspower[playwright]'") from exc
-            if not self.connection.playwright_cdp:
+            if not self.connection.playwright_cdp_url:
                 raise RuntimeError("AdsPower did not return a Playwright CDP endpoint")
             connect_kwargs = _playwright_connect_kwargs(**self._connect_options)
             self._playwright = await async_playwright().start()
-            self.browser = await self._playwright.chromium.connect_over_cdp(self.connection.playwright_cdp, **connect_kwargs)
+            self.browser = await self._playwright.chromium.connect_over_cdp(self.connection.playwright_cdp_url, **connect_kwargs)
             return self.browser
         except BaseException:
             await self.close(preserve_error=True)
@@ -259,7 +259,7 @@ class AsyncPlaywrightSession(AbstractAsyncContextManager[Any]):
         if self._closed:
             return
         self._closed = True
-        cleanup_error: BaseException | None = None
+        cleanup_error: Exception | None = None
         cleanups: list[Callable[[], Awaitable[Any]]] = []
         if self.browser is not None:
             cleanups.append(self.browser.close)
@@ -270,7 +270,7 @@ class AsyncPlaywrightSession(AbstractAsyncContextManager[Any]):
         for cleanup in cleanups:
             try:
                 await cleanup()
-            except BaseException as exc:
+            except Exception as exc:
                 cleanup_error = cleanup_error or exc
         self.browser = None
         self._playwright = None

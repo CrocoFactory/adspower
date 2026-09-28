@@ -27,6 +27,7 @@ business errors are normalized at this boundary.
 ```bash
 poetry install --all-extras
 poetry run ruff check .
+poetry run ruff format --check .
 poetry run pytest -m "not integration" --cov=adspower
 poetry build
 poetry run twine check dist/*
@@ -78,12 +79,15 @@ missing proxy settings into a failure instead of a skip.
 The Selenium test must navigate a local deterministic page, read the DOM, execute
 JavaScript, manage tabs, disconnect, stop the profile, and repeat stop safely.
 
-Sync and async Playwright tests must use an existing browser context, navigate,
-evaluate JavaScript, manage pages and cookies, disconnect, and stop cleanly. They
-must include already-closed and connection-loss cases.
+Sync and async Playwright integration currently cover the happy-path attach,
+navigation, page lifecycle, disconnect, and stop flow. Already-closed,
+connection-loss, and cancellation behavior has deterministic mocked regression
+coverage; it must be promoted to the live gate before those live failure modes
+are claimed as verified.
 
-Docker testing runs the SDK in a container while AdsPower runs on the host. A
-remote-host test must use two actual hosts if remote support is claimed.
+Docker and two-host remote topology remain explicit manual release gates until
+dedicated runners are provisioned. Mocked endpoint rewriting is contract
+coverage, not proof of network topology.
 
 ## Compatibility matrix
 
@@ -129,11 +133,11 @@ Do not publish based only on unit tests. The release candidate gate is:
 3. unit and mocked HTTP contracts;
 4. minimum and latest dependency matrices;
 5. Python-version matrix;
-6. real Selenium integration;
-7. real sync and async Playwright integration;
-8. Docker integration;
+6. real Selenium happy-path integration;
+7. real sync and async Playwright happy-path integration;
+8. manual Docker/two-host topology verification when those deployment modes are advertised;
 9. package build/install smoke tests;
-10. resource-warning and lifecycle checks.
+10. deterministic failure-mode/resource-warning lifecycle checks.
 
 Remote-host integration can be a documented manual or self-hosted gate when CI
 cannot provision the topology. Every fixed regression must retain an automated

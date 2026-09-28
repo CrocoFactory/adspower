@@ -93,8 +93,11 @@ with session.playwright() as browser:
     page = context.pages[0]
 ```
 
-The adapter passes the exact `ws.puppeteer` value returned by AdsPower to
-`connect_over_cdp`. It does not reconstruct a `localhost` URL. Because this is an
+The adapter preserves the returned CDP path/browser identifier. With the default
+remote endpoint policy, loopback hosts may be rewritten to the configured Local
+API host (or explicit `browser_host`) so Docker/private-remote deployments can
+reach the dynamic browser port. Set `browser_endpoint_policy="exact"` to keep
+the returned host unchanged. Because this is an
 attach-only flow, the SDK does not call `playwright install chromium` and does not
 launch Playwright's bundled browser.
 

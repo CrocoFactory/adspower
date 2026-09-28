@@ -187,22 +187,20 @@ def test_proxy_create_uses_current_array_contract() -> None:
             client.proxies.create_many([{}] * 501)
 
 
-def test_profile_name_filters_are_sent_to_ads_power() -> None:
+def test_profile_name_search_uses_only_documented_list_fields() -> None:
     requests: list[httpx.Request] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
         requests.append(request)
-        return response({"code": 0, "data": {"list": [{"profile_id": "p", "name": "needle"}]}})
+        page = json.loads(request.content)["page"]
+        data = [{"profile_id": "p", "name": "needle"}] if page == 1 else []
+        return response({"code": 0, "data": {"list": data}})
 
     with AdsPowerClient(transport=httpx.MockTransport(handler)) as client:
-        assert client.profiles.list(name="needle", name_filter="include")[0].id == "p"
+        assert client.profiles.find_by_name("needle", page_size=1).id == "p"
 
-    assert json.loads(requests[0].content) == {
-        "page": 1,
-        "limit": 100,
-        "name": "needle",
-        "name_filter": "include",
-    }
+    assert json.loads(requests[0].content) == {"page": 1, "limit": 1}
+    assert json.loads(requests[1].content) == {"page": 2, "limit": 1}
 
 
 def test_string_batch_arguments_are_rejected() -> None:
@@ -290,7 +288,7 @@ def _install_fake_selenium(monkeypatch: pytest.MonkeyPatch) -> tuple[type, type,
 
 def test_selenium_configuration_and_cleanup(monkeypatch: pytest.MonkeyPatch) -> None:
     _, service_type, driver_type = _install_fake_selenium(monkeypatch)
-    connection = BrowserConnection(selenium="127.0.0.1:9222", webdriver="/not-on-this-machine")
+    connection = BrowserConnection(selenium_debugger_address="127.0.0.1:9222", webdriver="/not-on-this-machine")
     stopped: list[bool] = []
     from adspower.automation import SeleniumSession
 
@@ -330,7 +328,7 @@ def test_remote_selenium_uses_ads_power_browser_version(monkeypatch: pytest.Monk
     from adspower.automation import SeleniumSession
 
     session = SeleniumSession(
-        BrowserConnection(selenium="remote.example:9222", webdriver="/remote/adspower/chromedriver"),
+        BrowserConnection(selenium_debugger_address="remote.example:9222", webdriver="/remote/adspower/chromedriver"),
         stop=lambda: None,
     )
     driver = session.__enter__()
@@ -459,7 +457,7 @@ def test_playwright_sync_and_async_connection_options(monkeypatch: pytest.Monkey
 
     from adspower.automation import AsyncPlaywrightSession, PlaywrightSession
 
-    connection = BrowserConnection(playwright_cdp="ws://exact")
+    connection = BrowserConnection(playwright_cdp_url="ws://exact")
     stopped: list[bool] = []
     session = PlaywrightSession(connection, stop=lambda: stopped.append(True), timeout=100, connect_kwargs={"future": 1})
     assert session.__enter__() is runtime.browser
@@ -494,7 +492,7 @@ def test_selenium_entry_failure_stops_profile_and_preserves_error(monkeypatch: p
         stops.append("stop")
         raise RuntimeError("cleanup failed")
 
-    session = SeleniumSession(BrowserConnection(selenium="127.0.0.1:9222"), stop=failing_stop)
+    session = SeleniumSession(BrowserConnection(selenium_debugger_address="127.0.0.1:9222"), stop=failing_stop)
     with pytest.raises(EntryError, match="driver failed"):
         session.__enter__()
     session.close()
@@ -511,7 +509,7 @@ def test_selenium_entry_failure_without_profile_stop(monkeypatch: pytest.MonkeyP
     sys.modules["selenium.webdriver.chrome.webdriver"].WebDriver = FailingDriver
     stops: list[bool] = []
     session = SeleniumSession(
-        BrowserConnection(selenium="127.0.0.1:9222"),
+        BrowserConnection(selenium_debugger_address="127.0.0.1:9222"),
         stop=lambda: stops.append(True),
         stop_on_exit=False,
     )
@@ -542,7 +540,7 @@ def test_playwright_entry_failure_cleans_runtime_and_preserves_error(monkeypatch
         stops.append("stop")
         raise RuntimeError("cleanup failed")
 
-    session = PlaywrightSession(BrowserConnection(playwright_cdp="ws://exact"), stop=failing_stop)
+    session = PlaywrightSession(BrowserConnection(playwright_cdp_url="ws://exact"), stop=failing_stop)
     with pytest.raises(LookupError, match="connect failed"):
         session.__enter__()
     assert runtime.stopped and stops == ["stop"]
@@ -555,7 +553,7 @@ def test_playwright_invalid_options_stop_profile_before_runtime_start(monkeypatc
     monkeypatch.setitem(sys.modules, "playwright.sync_api", sync_api)
     stops: list[bool] = []
     session = PlaywrightSession(
-        BrowserConnection(playwright_cdp="ws://exact"),
+        BrowserConnection(playwright_cdp_url="ws://exact"),
         stop=lambda: stops.append(True),
         timeout=100,
         connect_kwargs={"timeout": 200},
@@ -586,7 +584,7 @@ async def test_async_playwright_entry_failure_cleans_runtime() -> None:
     stops: list[bool] = []
     try:
         session = AsyncPlaywrightSession(
-            BrowserConnection(playwright_cdp="ws://exact"),
+            BrowserConnection(playwright_cdp_url="ws://exact"),
             stop=lambda: _async_mark(stops),
         )
         with pytest.raises(LookupError, match="connect failed"):
