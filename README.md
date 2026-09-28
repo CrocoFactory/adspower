@@ -32,11 +32,11 @@ configured matching driver service.
 - Docker/remote CDP endpoint handling.
 - Forward-compatible response models that preserve unknown fields.
 - Optional, concurrency-safe rate limiting.
-- Python 3.10–3.15 support.
+- Python 3.10–3.14 support; Python 3.15 is tested provisionally until GA.
 
 ## Requirements
 
-- Python 3.10 or newer (through 3.15).
+- Python 3.10 or newer (through 3.14; 3.15 prereleases are non-blocking).
 - AdsPower with Local API enabled and accessible to your account.
 - Selenium and/or Playwright only when browser automation is needed.
 - Playwright 1.61 or newer when the Playwright extra is installed.
@@ -72,8 +72,9 @@ with AdsPowerClient(api_key="your-api-key") as client:
         driver.get("https://example.com")
 ```
 
-`start_maximized` is opt-in. Headless mode belongs on the AdsPower start
-request, not in Selenium options.
+`start_maximized` and headless mode belong on the AdsPower start request, not
+in Selenium options. Maximization is translated to the AdsPower
+`--start-maximized` launch argument before Selenium attaches.
 
 ## Quick start: async Playwright
 
@@ -178,10 +179,9 @@ representations. Keep a remote Local API port on a private network or VPN.
 ## Automation options
 
 ```python
-session = client.browsers.start("profile-id", headless=True)
+session = client.browsers.start("profile-id", headless=True, start_maximized=True)
 
 with session.selenium(
-    start_maximized=True,
     page_load_strategy="eager",
 ) as driver:
     driver.get("https://example.com")

@@ -40,7 +40,6 @@ class BrowserSession:
         self,
         *,
         stop_on_exit: bool = True,
-        start_maximized: bool = False,
         page_load_strategy: Literal["normal", "eager", "none"] | None = None,
         options: Any = None,
         browser: Literal["auto", "chromium", "chrome", "firefox"] = "auto",
@@ -52,7 +51,6 @@ class BrowserSession:
             self.connection,
             stop=self.stop,
             stop_on_exit=stop_on_exit,
-            start_maximized=start_maximized,
             page_load_strategy=page_load_strategy,
             options=options,
             browser=browser,
@@ -61,7 +59,7 @@ class BrowserSession:
             webdriver_kwargs=webdriver_kwargs,
         )
 
-    def playwright(self, *, stop_on_exit: bool = True, timeout: float | None = None, slow_mo: float | None = None, headers: Mapping[str, str] | None = None, is_local: bool | None = None, no_defaults: bool | None = None, artifacts_dir: str | None = None, connect_kwargs: Mapping[str, Any] | None = None) -> PlaywrightSession:
+    def playwright(self, *, stop_on_exit: bool = True, timeout: float | None = None, slow_mo: float | None = None, headers: Mapping[str, str] | None = None, is_local: bool | None = None, no_defaults: bool = True, artifacts_dir: str | None = None, connect_kwargs: Mapping[str, Any] | None = None) -> PlaywrightSession:
         return PlaywrightSession(self.connection, stop=self.stop, stop_on_exit=stop_on_exit, timeout=timeout, slow_mo=slow_mo, headers=headers, is_local=is_local, no_defaults=no_defaults, artifacts_dir=artifacts_dir, connect_kwargs=connect_kwargs)
 
 
@@ -70,8 +68,16 @@ class BrowsersAPI:
         self._transport = transport
         self._config = config
 
-    def start(self, profile_id: str | None = None, *, profile_no: str | None = None, headless: bool = False, timeout: float | None = None, **options: Any) -> BrowserSession:
+    def start(self, profile_id: str | None = None, *, profile_no: str | None = None, headless: bool = False, start_maximized: bool = False, timeout: float | None = None, **options: Any) -> BrowserSession:
         selector = ProfileSelector(profile_id=profile_id, profile_no=profile_no)
+        raw_launch_args = options.pop("launch_args", []) or []
+        if isinstance(raw_launch_args, (str, bytes)):
+            raise ValueError("launch_args must be a sequence of arguments, not a string")
+        launch_args = list(raw_launch_args)
+        if not any(str(arg).startswith("--window-size=") for arg in launch_args) and "--start-maximized" not in launch_args and start_maximized:
+            launch_args.append("--start-maximized")
+        if launch_args:
+            options["launch_args"] = launch_args
         payload = {**selector.payload, "headless": "1" if headless else "0", **options}
         effective_timeout = self._config.browser_start_timeout if timeout is None else timeout
         data = self._transport.request(

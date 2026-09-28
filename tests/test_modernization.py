@@ -9,7 +9,7 @@ import httpx
 import pytest
 
 from adspower import AdsPowerClient, AsyncAdsPowerClient
-from adspower.automation import _playwright_connect_kwargs
+from adspower.automation import AsyncPlaywrightSession, PlaywrightSession, SeleniumSession, _playwright_connect_kwargs
 from adspower.exceptions import AdsPowerValidationError
 from adspower.models import BrowserConnection, Profile, Proxy
 
@@ -36,6 +36,71 @@ def test_profile_proxy_defaults_are_semantic() -> None:
     assert second["user_proxy_config"] == {"proxy_type": "http"}
     assert third["user_proxy_config"] == {"proxy_soft": "no_proxy"}
     assert second["fingerprint_config"]["automatic_timezone"] == "1"
+
+
+def test_profile_proxy_config_requires_canonical_v3_keys() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return response({"code": 0, "data": {"profile_id": "p"}})
+
+    with AdsPowerClient(transport=httpx.MockTransport(handler)) as client:
+        profile = client.profiles.create(
+            user_proxy_config={
+                "proxy_soft": "other",
+                "proxy_type": "http",
+                "proxy_host": "127.0.0.1",
+                "proxy_port": 8080,
+            }
+        )
+        assert profile.id == "p"
+        with pytest.raises(AdsPowerValidationError, match="legacy user_proxy_config keys"):
+            client.profiles.create(user_proxy_config={"host": "127.0.0.1"})
+        with pytest.raises(AdsPowerValidationError, match="legacy user_proxy_config keys"):
+            client.profiles.update("p", user_proxy_config={"proxy_host": "127.0.0.1", "port": 8080})
+
+    assert json.loads(requests[0].content)["user_proxy_config"] == {
+        "proxy_soft": "other",
+        "proxy_type": "http",
+        "proxy_host": "127.0.0.1",
+        "proxy_port": "8080",
+    }
+    assert len(requests) == 1
+
+
+def test_start_maximized_respects_explicit_window_size_and_deduplicates() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return response({"code": 0, "data": {"debug_port": "9222"}})
+
+    with AdsPowerClient(transport=httpx.MockTransport(handler)) as client:
+        client.browsers.start("p1", start_maximized=True, launch_args=["--start-maximized"])
+        client.browsers.start("p2", start_maximized=True, launch_args=["--window-size=1280,720"])
+
+    first, second = [json.loads(request.content) for request in requests]
+    assert first["launch_args"] == ["--start-maximized"]
+    assert second["launch_args"] == ["--window-size=1280,720"]
+
+    with AdsPowerClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ValueError, match="launch_args must be a sequence"):
+            client.browsers.start("p3", launch_args="--start-maximized")
+
+
+@pytest.mark.asyncio
+async def test_async_start_maximized_uses_ads_power_launch_args() -> None:
+    requests: list[httpx.Request] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return response({"code": 0, "data": {"debug_port": "9222"}})
+
+    async with AsyncAdsPowerClient(transport=httpx.MockTransport(handler)) as client:
+        await client.browsers.start("p1", start_maximized=True)
+
+    assert json.loads(requests[0].content)["launch_args"] == ["--start-maximized"]
 
 
 def test_profile_operations_and_cookie_normalization() -> None:
@@ -82,12 +147,13 @@ def test_raw_request_is_relative_and_can_preserve_envelope() -> None:
 
 def test_models_redact_credentials_and_cookie_values() -> None:
     profile = Profile.from_api({"profile_id": "p", "password": "real-password", "fakey": "2fa-secret", "user_proxy_config": {"proxy_password": "proxy-password"}, "cookie": "cookie-value"})
-    proxy = Proxy.from_api({"proxy_id": "x", "proxy_password": "proxy-password"})
+    proxy = Proxy.from_api({"proxy_id": "x", "proxy_password": "proxy-password", "proxy_url": "https://provider.example/refresh?token=url-secret"})
     assert "real-password" not in repr(profile)
     assert "2fa-secret" not in repr(profile)
     assert "proxy-password" not in repr(profile)
     assert "cookie-value" not in repr(profile)
     assert "proxy-password" not in repr(proxy)
+    assert "url-secret" not in repr(proxy)
 
 
 def test_validation_and_playwright_future_options() -> None:
@@ -229,11 +295,11 @@ def test_selenium_configuration_and_cleanup(monkeypatch: pytest.MonkeyPatch) -> 
     from adspower.automation import SeleniumSession
 
     service = service_type(port=9515)
-    session = SeleniumSession(connection, stop=lambda: stopped.append(True), service=service, start_maximized=True, webdriver_kwargs={"keep_alive": False})
+    session = SeleniumSession(connection, stop=lambda: stopped.append(True), service=service, webdriver_kwargs={"keep_alive": False})
     driver = session.__enter__()
     assert driver.kwargs["service"] is service
     assert driver.kwargs["options"]._experimental_options["debuggerAddress"] == "127.0.0.1:9222"
-    assert driver.maximized
+    assert not driver.maximized
     session.close()
     session.close()
     assert driver.quit_called and stopped == [True]
@@ -284,6 +350,58 @@ def test_firefox_selenium_uses_marionette_flags(monkeypatch: pytest.MonkeyPatch)
     assert args == ["--verbose", "--marionette-port", "2828", "--connect-existing"]
     session.close()
     assert service_type
+
+
+def test_firefox_selenium_uses_local_returned_driver(monkeypatch: pytest.MonkeyPatch) -> None:
+    _install_fake_selenium(monkeypatch)
+    import adspower.automation as automation
+
+    monkeypatch.setattr(automation.os.path, "isfile", lambda path: path == "/local/geckodriver")
+    session = automation.SeleniumSession(
+        BrowserConnection(marionette_port=2828, webdriver="/local/geckodriver"),
+        stop=lambda: None,
+        browser="firefox",
+    )
+    driver = session.__enter__()
+    assert driver.kwargs["service"].kwargs["executable_path"] == "/local/geckodriver"
+    session.close()
+
+
+def test_firefox_selenium_uses_remote_marionette_host(monkeypatch: pytest.MonkeyPatch) -> None:
+    _install_fake_selenium(monkeypatch)
+    import adspower.automation as automation
+
+    monkeypatch.setattr(automation.os.path, "isfile", lambda _path: True)
+    connection = BrowserConnection.from_api(
+        {"marionette_port": "2828", "webdriver": "/remote/geckodriver"},
+        base_url="http://ads.example:50325",
+    )
+    session = automation.SeleniumSession(connection, stop=lambda: None, browser="firefox")
+    driver = session.__enter__()
+    service_kwargs = driver.kwargs["service"].kwargs
+    assert service_kwargs["service_args"] == [
+        "--marionette-port",
+        "2828",
+        "--connect-existing",
+        "--marionette-host",
+        "ads.example",
+    ]
+    assert "executable_path" not in service_kwargs
+    session.close()
+
+
+def test_firefox_custom_service_takes_precedence(monkeypatch: pytest.MonkeyPatch) -> None:
+    _, service_type, _ = _install_fake_selenium(monkeypatch)
+    service = service_type(executable_path="/custom/geckodriver")
+    session = SeleniumSession(
+        BrowserConnection(marionette_port=2828, marionette_host="remote.example"),
+        stop=lambda: None,
+        browser="firefox",
+        service=service,
+    )
+    driver = session.__enter__()
+    assert driver.kwargs["service"] is service
+    session.close()
 
 
 def test_playwright_sync_and_async_connection_options(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -345,21 +463,148 @@ def test_playwright_sync_and_async_connection_options(monkeypatch: pytest.Monkey
     stopped: list[bool] = []
     session = PlaywrightSession(connection, stop=lambda: stopped.append(True), timeout=100, connect_kwargs={"future": 1})
     assert session.__enter__() is runtime.browser
-    assert runtime.endpoint == "ws://exact" and runtime.kwargs == {"timeout": 100, "future": 1}
+    assert runtime.endpoint == "ws://exact" and runtime.kwargs == {"timeout": 100, "no_defaults": True, "future": 1}
     session.close()
     assert stopped == [True]
 
     async def check_async() -> None:
-        async_session = AsyncPlaywrightSession(connection, stop=lambda: _async_mark(stopped))
+        async_session = AsyncPlaywrightSession(connection, stop=lambda: _async_mark(stopped), no_defaults=False)
         assert await async_session.__aenter__() is async_runtime.browser
+        assert async_runtime.kwargs == {"no_defaults": False}
         await async_session.close()
 
     import asyncio
     asyncio.run(check_async())
 
 
+def test_selenium_entry_failure_stops_profile_and_preserves_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    _install_fake_selenium(monkeypatch)
+
+    class EntryError(RuntimeError):
+        pass
+
+    class FailingDriver:
+        def __init__(self, **_kwargs: object) -> None:
+            raise EntryError("driver failed")
+
+    sys.modules["selenium.webdriver.chrome.webdriver"].WebDriver = FailingDriver
+    stops: list[str] = []
+
+    def failing_stop() -> None:
+        stops.append("stop")
+        raise RuntimeError("cleanup failed")
+
+    session = SeleniumSession(BrowserConnection(selenium="127.0.0.1:9222"), stop=failing_stop)
+    with pytest.raises(EntryError, match="driver failed"):
+        session.__enter__()
+    session.close()
+    assert stops == ["stop"]
+
+
+def test_selenium_entry_failure_without_profile_stop(monkeypatch: pytest.MonkeyPatch) -> None:
+    _install_fake_selenium(monkeypatch)
+
+    class FailingDriver:
+        def __init__(self, **_kwargs: object) -> None:
+            raise RuntimeError("driver failed")
+
+    sys.modules["selenium.webdriver.chrome.webdriver"].WebDriver = FailingDriver
+    stops: list[bool] = []
+    session = SeleniumSession(
+        BrowserConnection(selenium="127.0.0.1:9222"),
+        stop=lambda: stops.append(True),
+        stop_on_exit=False,
+    )
+    with pytest.raises(RuntimeError, match="driver failed"):
+        session.__enter__()
+    assert stops == []
+
+
+def test_playwright_entry_failure_cleans_runtime_and_preserves_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    class Runtime:
+        def __init__(self) -> None:
+            self.chromium = self
+            self.stopped = False
+
+        def connect_over_cdp(self, _endpoint: str, **_kwargs: object) -> object:
+            raise LookupError("connect failed")
+
+        def stop(self) -> None:
+            self.stopped = True
+
+    runtime = Runtime()
+    sync_api = types.ModuleType("playwright.sync_api")
+    sync_api.sync_playwright = lambda: types.SimpleNamespace(start=lambda: runtime)
+    monkeypatch.setitem(sys.modules, "playwright.sync_api", sync_api)
+    stops: list[str] = []
+
+    def failing_stop() -> None:
+        stops.append("stop")
+        raise RuntimeError("cleanup failed")
+
+    session = PlaywrightSession(BrowserConnection(playwright_cdp="ws://exact"), stop=failing_stop)
+    with pytest.raises(LookupError, match="connect failed"):
+        session.__enter__()
+    assert runtime.stopped and stops == ["stop"]
+
+
+def test_playwright_invalid_options_stop_profile_before_runtime_start(monkeypatch: pytest.MonkeyPatch) -> None:
+    starts: list[bool] = []
+    sync_api = types.ModuleType("playwright.sync_api")
+    sync_api.sync_playwright = lambda: types.SimpleNamespace(start=lambda: starts.append(True))
+    monkeypatch.setitem(sys.modules, "playwright.sync_api", sync_api)
+    stops: list[bool] = []
+    session = PlaywrightSession(
+        BrowserConnection(playwright_cdp="ws://exact"),
+        stop=lambda: stops.append(True),
+        timeout=100,
+        connect_kwargs={"timeout": 200},
+    )
+    with pytest.raises(ValueError, match="Duplicate Playwright connection options"):
+        session.__enter__()
+    assert starts == [] and stops == [True]
+
+
+@pytest.mark.asyncio
+async def test_async_playwright_entry_failure_cleans_runtime() -> None:
+    class Runtime:
+        def __init__(self) -> None:
+            self.chromium = self
+            self.stopped = False
+
+        async def connect_over_cdp(self, _endpoint: str, **_kwargs: object) -> object:
+            raise LookupError("connect failed")
+
+        async def stop(self) -> None:
+            self.stopped = True
+
+    runtime = Runtime()
+    async_api = types.ModuleType("playwright.async_api")
+    async_api.async_playwright = lambda: types.SimpleNamespace(start=lambda: _async_value(runtime))
+    original = sys.modules.get("playwright.async_api")
+    sys.modules["playwright.async_api"] = async_api
+    stops: list[bool] = []
+    try:
+        session = AsyncPlaywrightSession(
+            BrowserConnection(playwright_cdp="ws://exact"),
+            stop=lambda: _async_mark(stops),
+        )
+        with pytest.raises(LookupError, match="connect failed"):
+            await session.__aenter__()
+        assert runtime.stopped and stops == [True]
+    finally:
+        if original is None:
+            sys.modules.pop("playwright.async_api", None)
+        else:
+            sys.modules["playwright.async_api"] = original
+
+
 async def _async_mark(values: list[bool]) -> None:
     values.append(True)
+
+
+async def _async_value(value: object) -> object:
+    return value
 
 
 def test_sync_resource_crud_and_paginated_name_search() -> None:

@@ -57,6 +57,9 @@ profile = client.profiles.create(
 
 Proxy-provider fields accept strings. This keeps the runtime forward-compatible
 when AdsPower introduces a provider that the SDK does not know yet.
+Only canonical Local API V2 proxy keys are accepted in `user_proxy_config`, such
+as `proxy_soft`, `proxy_type`, `proxy_host`, `proxy_port`, `proxy_user`, and
+`proxy_password`. Removed v2 aliases are rejected instead of translated.
 
 Profile creation accepts either `proxyid` or `user_proxy_config`; when neither
 is supplied the SDK sends the documented no-proxy default. `fingerprint_config=None`
@@ -110,6 +113,7 @@ active = client.browsers.list_active()
 - exact Playwright/Puppeteer CDP websocket;
 - debug port;
 - AdsPower-provided WebDriver path;
+- remote Marionette host for Firefox attachment;
 - future fields in `extra`.
 
 Calling `stop()` more than once on the same session is safe and sends one stop

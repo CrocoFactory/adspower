@@ -74,16 +74,34 @@ def _profile_default_fields(fields: dict[str, Any]) -> None:
         fields["fingerprint_config"] = {"automatic_timezone": "1", "language": ["en-US", "en"], "flash": "block", "webrtc": "disabled"}
 
 
+def _prepare_user_proxy_config(fields: dict[str, Any]) -> None:
+    value = fields.get("user_proxy_config")
+    if value is None:
+        return
+    if not isinstance(value, Mapping):
+        raise AdsPowerValidationError("user_proxy_config must be a mapping")
+    legacy = {"soft", "type", "host", "port", "user", "password"}.intersection(value)
+    if legacy:
+        names = ", ".join(sorted(legacy))
+        raise AdsPowerValidationError(f"legacy user_proxy_config keys are not supported in v3: {names}; use proxy_* keys")
+    normalized = dict(value)
+    if normalized.get("proxy_port") is not None:
+        normalized["proxy_port"] = str(normalized["proxy_port"])
+    fields["user_proxy_config"] = normalized
+
+
 class ProfilesAPI:
     def __init__(self, transport: Any) -> None:
         self._transport = transport
 
     def create(self, *, name: str | None = None, group_id: str = "0", **fields: Any) -> Profile:
         _profile_default_fields(fields)
+        _prepare_user_proxy_config(fields)
         data = self._transport.request("POST", "/api/v2/browser-profile/create", json=_compact({"name": name, "group_id": group_id, **fields}))
         return Profile.from_api(data)
 
     def update(self, profile_id: str, *, refresh: bool = False, **fields: Any) -> Profile | None:
+        _prepare_user_proxy_config(fields)
         data = self._transport.request("POST", "/api/v2/browser-profile/update", json=_compact({"profile_id": profile_id, **fields}))
         if isinstance(data, Mapping) and any(key in data for key in ("profile_id", "user_id", "id")):
             return Profile.from_api(data)
@@ -146,10 +164,12 @@ class AsyncProfilesAPI:
 
     async def create(self, *, name: str | None = None, group_id: str = "0", **fields: Any) -> Profile:
         _profile_default_fields(fields)
+        _prepare_user_proxy_config(fields)
         data = await self._transport.request("POST", "/api/v2/browser-profile/create", json=_compact({"name": name, "group_id": group_id, **fields}))
         return Profile.from_api(data)
 
     async def update(self, profile_id: str, *, refresh: bool = False, **fields: Any) -> Profile | None:
+        _prepare_user_proxy_config(fields)
         data = await self._transport.request("POST", "/api/v2/browser-profile/update", json=_compact({"profile_id": profile_id, **fields}))
         if isinstance(data, Mapping) and any(key in data for key in ("profile_id", "user_id", "id")):
             return Profile.from_api(data)
@@ -376,8 +396,8 @@ def parse_browser_status(data: Any, base_url: str) -> BrowserStatus:
     if not isinstance(data, Mapping):
         raise ValueError("Browser status response data must be an object")
     status = str(data.get("status", data.get("state", "inactive")))
-    connection = BrowserConnection.from_api(data, base_url=base_url) if any(key in data for key in ("ws", "debug_port", "webdriver", "selenium", "marionette_port")) else None
-    known = {"status", "state", "ws", "debug_port", "webdriver", "selenium", "marionette_port"}
+    connection = BrowserConnection.from_api(data, base_url=base_url) if any(key in data for key in ("ws", "debug_port", "webdriver", "selenium", "marionette_port", "marionette_host")) else None
+    known = {"status", "state", "ws", "debug_port", "webdriver", "selenium", "marionette_port", "marionette_host"}
     return BrowserStatus(status=status, connection=connection, extra={key: value for key, value in data.items() if key not in known})
 
 

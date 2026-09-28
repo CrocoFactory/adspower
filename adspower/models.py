@@ -129,11 +129,13 @@ class BrowserConnection:
     debug_port: int | None = None
     webdriver: str | None = None
     marionette_port: int | None = None
+    marionette_host: str | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_api(cls, data: Mapping[str, Any], *, base_url: str) -> "BrowserConnection":
-        ws = data.get("ws") if isinstance(data.get("ws"), Mapping) else {}
+        ws_value = data.get("ws")
+        ws: Mapping[str, Any] = ws_value if isinstance(ws_value, Mapping) else {}
         debug_port_raw = data.get("debug_port")
         debug_port = int(debug_port_raw) if debug_port_raw not in (None, "") else None
         marionette_raw = data.get("marionette_port")
@@ -142,6 +144,9 @@ class BrowserConnection:
         playwright = ws.get("puppeteer") or data.get("playwright_cdp")
         api_host = urlsplit(base_url).hostname or "127.0.0.1"
         loopback_hosts = {"127.0.0.1", "localhost", "::1"}
+        marionette_host = data.get("marionette_host") or (
+            api_host if marionette_port is not None and api_host not in loopback_hosts else None
+        )
         if selenium and api_host not in loopback_hosts:
             parsed_selenium = urlsplit(f"//{selenium}")
             if parsed_selenium.hostname in loopback_hosts and parsed_selenium.port:
@@ -161,13 +166,14 @@ class BrowserConnection:
                 )
         if debug_port is not None and not selenium:
             selenium = f"{_format_host(api_host)}:{debug_port}"
-        known = {"ws", "debug_port", "webdriver", "selenium", "playwright_cdp", "marionette_port"}
+        known = {"ws", "debug_port", "webdriver", "selenium", "playwright_cdp", "marionette_port", "marionette_host"}
         return cls(
             selenium=str(selenium) if selenium else None,
             playwright_cdp=str(playwright) if playwright else None,
             debug_port=debug_port,
             webdriver=str(data["webdriver"]) if data.get("webdriver") else None,
             marionette_port=marionette_port,
+            marionette_host=str(marionette_host) if marionette_host else None,
             extra={key: value for key, value in data.items() if key not in known},
         )
 

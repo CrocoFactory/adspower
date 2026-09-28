@@ -40,13 +40,15 @@ Headless mode belongs to the AdsPower start request:
 session = client.browsers.start("profile-id", headless=True)
 ```
 
-No `--headless` flag is added to Selenium options after attachment. Automatic
-window maximization defaults to false because window geometry can be part of the
-profile fingerprint. Page-load strategy is also left at Selenium's default.
+No `--headless` flag is added to Selenium options after attachment. Window
+resizing is unsupported for ChromeDriver debugger-address sessions, so optional
+maximization is requested before attachment through AdsPower launch arguments.
+An explicit `--window-size=...` launch argument takes precedence.
 
 ```python
+session = client.browsers.start("profile-id", start_maximized=True)
+
 with session.selenium(
-    start_maximized=True,
     page_load_strategy="eager",
 ) as driver:
     ...
@@ -71,7 +73,9 @@ Use `service_kwargs` when constructing a `Service` object is more convenient.
 `service` and `service_kwargs` cannot be supplied together. Firefox attachment
 is experimental and should only be used after verifying that the target
 AdsPower version returns a real `marionette_port`; select it with
-`browser="firefox"`:
+`browser="firefox"`. A local AdsPower-returned geckodriver path is used when it
+exists. For remote AdsPower, the SDK derives the Marionette host from the Local
+API base URL and does not interpret the remote driver path as a local file.
 
 ```python
 session = client.browsers.start(profile_no="42")
@@ -98,8 +102,10 @@ Playwright's CDP attachment applies to Chromium-based browsers and may expose
 fewer capabilities than a browser launched directly through Playwright.
 
 The SDK requires Playwright 1.61 or newer because the typed connection options
-include `is_local`, `no_defaults` and `artifacts_dir`. Current Playwright
-connection options and future options are both supported:
+include `is_local`, `no_defaults` and `artifacts_dir`. Attachment defaults to
+`no_defaults=True` so Playwright does not override the existing AdsPower
+context. Pass `no_defaults=False` explicitly to opt into Playwright defaults.
+Current Playwright connection options and future options are both supported:
 
 ```python
 with session.playwright(

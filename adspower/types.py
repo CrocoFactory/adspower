@@ -24,17 +24,11 @@ DeviceMemory = Literal["default", "2", "4", "6", "8"] | str
 
 
 class ProxyConfig(TypedDict, total=False):
-    soft: ProxySoft
-    proxy_soft: str
-    type: ProfileProxyType | str
-    proxy_type: str
-    host: str
+    proxy_soft: ProxySoft
+    proxy_type: ProfileProxyType | str
     proxy_host: str
-    port: int
     proxy_port: int | str
-    user: str
     proxy_user: str
-    password: str
     proxy_password: str
 
 

@@ -86,8 +86,9 @@ If you depended on automatic maximization or `page_load_strategy="none"`, reques
 those behaviors explicitly:
 
 ```python
+session = client.browsers.start("profile-id", start_maximized=True)
+
 with session.selenium(
-    start_maximized=True,
     page_load_strategy="none",
 ) as driver:
     ...
@@ -96,10 +97,16 @@ with session.selenium(
 Do not add a Selenium headless argument when attaching. Pass `headless=True` to
 `client.browsers.start` instead.
 
+Legacy `user_proxy_config` aliases such as `host`, `port`, and `password` were
+removed. Use the Local API V2 names (`proxy_host`, `proxy_port`, and
+`proxy_password`); v3 rejects the old keys before sending a request.
+
 ## Playwright behavior
 
 Playwright now uses AdsPower's returned CDP websocket verbatim. This fixes Docker
 and remote-host attachment where rebuilding `http://localhost:<port>` was wrong.
+It also defaults to `no_defaults=True` to preserve the existing profile-managed
+browser context.
 
 Async cleanup disconnects automation before stopping the profile and Playwright
 runtime. Calling cleanup twice is safe.

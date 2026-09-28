@@ -40,8 +40,9 @@ for a typed wrapper:
 - Playwright attaches through CDP, so it has lower fidelity than a native
   Playwright-launched browser.
 - Firefox attachment is experimental: it requires a real AdsPower response with
-  a usable `marionette_port` and a driver topology available to the Python
-  process. The repository does not currently claim a verified Firefox Local API
-  contract.
+  a usable `marionette_port`. Local attachment uses the AdsPower-returned driver
+  path when available; remote attachment routes geckodriver to the Local API
+  host through `--marionette-host`. The repository does not currently claim a
+  verified Firefox Local API contract.
 - Real AdsPower, Docker, and remote-host integration tests are separate from
   deterministic mock contract tests and require explicit environment setup.

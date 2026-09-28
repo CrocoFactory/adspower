@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import threading
+import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Iterator
 
@@ -12,13 +13,69 @@ from adspower import AdsPowerClient, AsyncAdsPowerClient
 pytestmark = pytest.mark.integration
 
 
-def _integration_profile_id() -> str:
+def _integration_enabled() -> None:
     if os.getenv("ADSPOWER_INTEGRATION") != "1":
         pytest.skip("Set ADSPOWER_INTEGRATION=1 to run real browser tests")
+
+
+def _integration_profile_id() -> str:
+    _integration_enabled()
     profile_id = os.getenv("ADSPOWER_TEST_PROFILE_ID")
     if not profile_id:
         pytest.skip("ADSPOWER_TEST_PROFILE_ID is required")
     return profile_id
+
+
+def test_real_disposable_profile_crud_and_catalog_reads() -> None:
+    _integration_enabled()
+    profile_id: str | None = None
+    name = f"adspower-sdk-integration-{uuid.uuid4().hex}"
+    with AdsPowerClient() as client:
+        groups = client.groups.list(page_size=1)
+        categories = client.categories.list(page_size=1)
+        group_id = os.getenv("ADSPOWER_TEST_GROUP_ID") or (groups[0].id if groups else "0")
+        try:
+            profile = client.profiles.create(name=name, group_id=group_id)
+            profile_id = profile.id
+            assert client.profiles.get(profile_id).name == name
+            client.profiles.update(profile_id, name=f"{name}-updated")
+            assert client.profiles.get(profile_id).name == f"{name}-updated"
+            assert any(item.id == profile_id for item in client.profiles.list(profile_id=profile_id))
+            assert isinstance(client.profiles.cookies(profile_id=profile_id), list)
+            client.profiles.delete_cache([profile_id], ["cookie"])
+            assert isinstance(categories, list)
+        finally:
+            if profile_id is not None:
+                client.profiles.delete(profile_id)
+
+
+def test_real_disposable_proxy_crud() -> None:
+    _integration_enabled()
+    host = os.getenv("ADSPOWER_TEST_PROXY_HOST")
+    port = os.getenv("ADSPOWER_TEST_PROXY_PORT")
+    if not host or not port:
+        if os.getenv("ADSPOWER_REQUIRE_PROXY_INTEGRATION") == "1":
+            pytest.fail("ADSPOWER_TEST_PROXY_HOST and ADSPOWER_TEST_PROXY_PORT are required by this integration gate")
+        pytest.skip("ADSPOWER_TEST_PROXY_HOST and ADSPOWER_TEST_PROXY_PORT are required")
+
+    proxy_id: str | None = None
+    with AdsPowerClient() as client:
+        try:
+            ids = client.proxies.create(
+                type=os.getenv("ADSPOWER_TEST_PROXY_TYPE", "http"),
+                host=host,
+                port=port,
+                user=os.getenv("ADSPOWER_TEST_PROXY_USER"),
+                password=os.getenv("ADSPOWER_TEST_PROXY_PASSWORD"),
+                remark="adspower-sdk-integration",
+            )
+            assert ids
+            proxy_id = ids[0]
+            assert any(item.id == proxy_id for item in client.proxies.list(proxy_ids=[proxy_id]))
+            client.proxies.update(proxy_id, remark="adspower-sdk-integration-updated")
+        finally:
+            if proxy_id is not None:
+                client.proxies.delete(proxy_id)
 
 
 @pytest.fixture(scope="module")

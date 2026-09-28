@@ -11,6 +11,7 @@ SENSITIVE_KEY_PARTS = (
     "api_key",
     "secret",
     "authorization",
+    "proxy_url",
 )
 
 

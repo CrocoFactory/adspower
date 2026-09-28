@@ -67,6 +67,14 @@ ADSPOWER_API_KEY=...
 ADSPOWER_TEST_PROFILE_ID=...
 ```
 
+The suite creates and deletes its own profile for CRUD, cookie, cache, group-list,
+and category-list coverage. Real proxy CRUD additionally requires
+`ADSPOWER_TEST_PROXY_HOST` and `ADSPOWER_TEST_PROXY_PORT`; type and credentials
+use the corresponding optional `ADSPOWER_TEST_PROXY_*` variables. All created
+profiles and proxies are deleted in `finally` blocks.
+The release workflow sets `ADSPOWER_REQUIRE_PROXY_INTEGRATION=1`, turning
+missing proxy settings into a failure instead of a skip.
+
 The Selenium test must navigate a local deterministic page, read the DOM, execute
 JavaScript, manage tabs, disconnect, stop the profile, and repeat stop safely.
 
@@ -130,6 +138,11 @@ Do not publish based only on unit tests. The release candidate gate is:
 Remote-host integration can be a documented manual or self-hosted gate when CI
 cannot provision the topology. Every fixed regression must retain an automated
 test in the repository.
+
+The integration workflow also runs for `v*` tags, so an available self-hosted
+AdsPower runner and a successful live suite are release conditions. Docker and
+private two-host claims still require runners carrying those actual topologies;
+mock endpoint rewriting is not accepted as integration evidence.
 
 ## References
 

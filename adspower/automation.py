@@ -43,6 +43,10 @@ def _is_loopback_debugger(debugger_address: str) -> bool:
     return parsed.hostname in {"127.0.0.1", "localhost", "::1"}
 
 
+def _is_loopback_host(host: str | None) -> bool:
+    return host in {"127.0.0.1", "localhost", "::1"}
+
+
 def _playwright_connect_kwargs(
     *,
     timeout: float | None = None,
@@ -62,10 +66,9 @@ def _playwright_connect_kwargs(
 
 
 class SeleniumSession(AbstractContextManager[Any]):
-    def __init__(self, connection: BrowserConnection, *, stop: Callable[[], None], stop_on_exit: bool = True, start_maximized: bool = False, page_load_strategy: Literal["normal", "eager", "none"] | None = None, options: Any = None, browser: Literal["auto", "chromium", "chrome", "firefox"] = "auto", service: Any = None, service_kwargs: Mapping[str, Any] | None = None, webdriver_kwargs: Mapping[str, Any] | None = None) -> None:
+    def __init__(self, connection: BrowserConnection, *, stop: Callable[[], None], stop_on_exit: bool = True, page_load_strategy: Literal["normal", "eager", "none"] | None = None, options: Any = None, browser: Literal["auto", "chromium", "chrome", "firefox"] = "auto", service: Any = None, service_kwargs: Mapping[str, Any] | None = None, webdriver_kwargs: Mapping[str, Any] | None = None) -> None:
         self.connection, self._stop = connection, stop
         self.stop_on_exit = stop_on_exit
-        self.start_maximized = start_maximized
         self.page_load_strategy = page_load_strategy
         self.options = options
         # Firefox attachment is experimental and must be selected explicitly;
@@ -78,60 +81,68 @@ class SeleniumSession(AbstractContextManager[Any]):
         self._closed = False
 
     def __enter__(self) -> Any:
-        if "service" in self.webdriver_kwargs or "options" in self.webdriver_kwargs:
-            raise ValueError("webdriver_kwargs cannot contain service or options")
-        if self.service is not None and self.service_kwargs:
-            raise ValueError("service and service_kwargs are mutually exclusive")
-        if self.browser not in {"chromium", "firefox"}:
-            raise ValueError("browser must be auto, chromium, chrome, or firefox")
         try:
-            if self.browser == "firefox":
-                from selenium.webdriver.firefox.options import Options
-                from selenium.webdriver.firefox.service import Service
-                from selenium.webdriver.firefox.webdriver import WebDriver
+            if "service" in self.webdriver_kwargs or "options" in self.webdriver_kwargs:
+                raise ValueError("webdriver_kwargs cannot contain service or options")
+            if self.service is not None and self.service_kwargs:
+                raise ValueError("service and service_kwargs are mutually exclusive")
+            if self.browser not in {"chromium", "firefox"}:
+                raise ValueError("browser must be auto, chromium, chrome, or firefox")
+            try:
+                if self.browser == "firefox":
+                    from selenium.webdriver.firefox.options import Options
+                    from selenium.webdriver.firefox.service import Service
+                    from selenium.webdriver.firefox.webdriver import WebDriver
+                else:
+                    from selenium.webdriver.chrome.options import Options
+                    from selenium.webdriver.chrome.service import Service
+                    from selenium.webdriver.chrome.webdriver import WebDriver
+            except ImportError as exc:
+                raise ImportError("Install Selenium support with: pip install 'adspower[selenium]'") from exc
+            options_class: Any = Options
+            service_class: Any = Service
+            webdriver_class: Any = WebDriver
+            options: Any = self.options or options_class()
+            if self.browser == "firefox" and not self.connection.marionette_port:
+                raise RuntimeError("Firefox AdsPower attachment requires a marionette_port returned by the Local API")
+            if self.browser == "chromium":
+                if not self.connection.selenium:
+                    raise RuntimeError("AdsPower did not return a Selenium debugger endpoint")
+                existing = getattr(options, "_experimental_options", {}).get("debuggerAddress")
+                if existing and existing != self.connection.selenium:
+                    raise ValueError("Selenium options already contain a different debuggerAddress")
+                if not existing:
+                    options.add_experimental_option("debuggerAddress", self.connection.selenium)
+            if self.page_load_strategy is not None:
+                options.page_load_strategy = self.page_load_strategy
+            if self.service is not None:
+                service = self.service
             else:
-                from selenium.webdriver.chrome.options import Options
-                from selenium.webdriver.chrome.service import Service
-                from selenium.webdriver.chrome.webdriver import WebDriver
-        except ImportError as exc:
-            raise ImportError("Install Selenium support with: pip install 'adspower[selenium]'") from exc
-        if self.browser == "firefox" and not self.connection.marionette_port:
-            raise RuntimeError("Firefox AdsPower attachment requires a marionette_port returned by the Local API")
-        options = self.options or Options()
-        if self.browser == "chromium":
-            if not self.connection.selenium:
-                raise RuntimeError("AdsPower did not return a Selenium debugger endpoint")
-            existing = getattr(options, "_experimental_options", {}).get("debuggerAddress")
-            if existing and existing != self.connection.selenium:
-                raise ValueError("Selenium options already contain a different debuggerAddress")
-            if not existing:
-                options.add_experimental_option("debuggerAddress", self.connection.selenium)
-        if self.page_load_strategy is not None:
-            options.page_load_strategy = self.page_load_strategy
-        if self.service is not None:
-            service = self.service
-        else:
-            service_kwargs = dict(self.service_kwargs)
-            if self.browser == "firefox":
-                args = list(service_kwargs.get("service_args", []))
-                if "--marionette-port" not in args:
-                    args.extend(["--marionette-port", str(self.connection.marionette_port)])
-                if "--connect-existing" not in args:
-                    args.append("--connect-existing")
-                service_kwargs["service_args"] = args
-            elif self.connection.webdriver and os.path.isfile(self.connection.webdriver) and "executable_path" not in service_kwargs:
-                service_kwargs["executable_path"] = self.connection.webdriver
-            elif self.connection.selenium and not _is_loopback_debugger(self.connection.selenium):
-                # A path such as /remote/adspower/chromedriver is commonly
-                # meaningful only inside the AdsPower container. Selenium Manager
-                # otherwise sees only the local machine and may choose a driver
-                # for a different locally installed Chrome.
-                options.browser_version = _remote_chromium_version(self.connection.selenium)
-            service = Service(**service_kwargs)
-        self.driver = WebDriver(service=service, options=options, **self.webdriver_kwargs)
-        if self.start_maximized:
-            self.driver.maximize_window()
-        return self.driver
+                service_kwargs = dict(self.service_kwargs)
+                if self.browser == "firefox":
+                    args = list(service_kwargs.get("service_args", []))
+                    if "--marionette-port" not in args:
+                        args.extend(["--marionette-port", str(self.connection.marionette_port)])
+                    if "--connect-existing" not in args:
+                        args.append("--connect-existing")
+                    if self.connection.marionette_host and not _is_loopback_host(self.connection.marionette_host) and "--marionette-host" not in args:
+                        args.extend(["--marionette-host", self.connection.marionette_host])
+                    service_kwargs["service_args"] = args
+                local_driver_path = not self.connection.marionette_host or _is_loopback_host(self.connection.marionette_host)
+                if self.connection.webdriver and local_driver_path and os.path.isfile(self.connection.webdriver) and "executable_path" not in service_kwargs:
+                    service_kwargs["executable_path"] = self.connection.webdriver
+                elif self.browser == "chromium" and self.connection.selenium and not _is_loopback_debugger(self.connection.selenium):
+                    # A path such as /remote/adspower/chromedriver is commonly
+                    # meaningful only inside the AdsPower container. Selenium Manager
+                    # otherwise sees only the local machine and may choose a driver
+                    # for a different locally installed Chrome.
+                    options.browser_version = _remote_chromium_version(self.connection.selenium)
+                service = service_class(**service_kwargs)
+            self.driver = webdriver_class(service=service, options=options, **self.webdriver_kwargs)
+            return self.driver
+        except BaseException:
+            self.close(preserve_error=True)
+            raise
 
     def close(self, *, preserve_error: bool = False) -> None:
         if self._closed:
@@ -159,24 +170,37 @@ class SeleniumSession(AbstractContextManager[Any]):
 
 
 class PlaywrightSession(AbstractContextManager[Any]):
-    def __init__(self, connection: BrowserConnection, *, stop: Callable[[], None], stop_on_exit: bool = True, timeout: float | None = None, slow_mo: float | None = None, headers: Mapping[str, str] | None = None, is_local: bool | None = None, no_defaults: bool | None = None, artifacts_dir: str | None = None, connect_kwargs: Mapping[str, Any] | None = None) -> None:
+    def __init__(self, connection: BrowserConnection, *, stop: Callable[[], None], stop_on_exit: bool = True, timeout: float | None = None, slow_mo: float | None = None, headers: Mapping[str, str] | None = None, is_local: bool | None = None, no_defaults: bool = True, artifacts_dir: str | None = None, connect_kwargs: Mapping[str, Any] | None = None) -> None:
         self.connection, self._stop = connection, stop
         self.stop_on_exit = stop_on_exit
-        self._connect_kwargs = _playwright_connect_kwargs(timeout=timeout, slow_mo=slow_mo, headers=headers, is_local=is_local, no_defaults=no_defaults, artifacts_dir=artifacts_dir, connect_kwargs=connect_kwargs)
+        self._connect_options = {
+            "timeout": timeout,
+            "slow_mo": slow_mo,
+            "headers": headers,
+            "is_local": is_local,
+            "no_defaults": no_defaults,
+            "artifacts_dir": artifacts_dir,
+            "connect_kwargs": connect_kwargs,
+        }
         self._playwright: Any = None
         self.browser: Any = None
         self._closed = False
 
     def __enter__(self) -> Any:
         try:
-            from playwright.sync_api import sync_playwright
-        except ImportError as exc:
-            raise ImportError("Install Playwright support with: pip install 'adspower[playwright]'") from exc
-        if not self.connection.playwright_cdp:
-            raise RuntimeError("AdsPower did not return a Playwright CDP endpoint")
-        self._playwright = sync_playwright().start()
-        self.browser = self._playwright.chromium.connect_over_cdp(self.connection.playwright_cdp, **self._connect_kwargs)
-        return self.browser
+            try:
+                from playwright.sync_api import sync_playwright
+            except ImportError as exc:
+                raise ImportError("Install Playwright support with: pip install 'adspower[playwright]'") from exc
+            if not self.connection.playwright_cdp:
+                raise RuntimeError("AdsPower did not return a Playwright CDP endpoint")
+            connect_kwargs = _playwright_connect_kwargs(**self._connect_options)
+            self._playwright = sync_playwright().start()
+            self.browser = self._playwright.chromium.connect_over_cdp(self.connection.playwright_cdp, **connect_kwargs)
+            return self.browser
+        except BaseException:
+            self.close(preserve_error=True)
+            raise
 
     def close(self, *, preserve_error: bool = False) -> None:
         if self._closed:
@@ -199,24 +223,37 @@ class PlaywrightSession(AbstractContextManager[Any]):
 
 
 class AsyncPlaywrightSession(AbstractAsyncContextManager[Any]):
-    def __init__(self, connection: BrowserConnection, *, stop: Callable[[], Awaitable[None]], stop_on_exit: bool = True, timeout: float | None = None, slow_mo: float | None = None, headers: Mapping[str, str] | None = None, is_local: bool | None = None, no_defaults: bool | None = None, artifacts_dir: str | None = None, connect_kwargs: Mapping[str, Any] | None = None) -> None:
+    def __init__(self, connection: BrowserConnection, *, stop: Callable[[], Awaitable[None]], stop_on_exit: bool = True, timeout: float | None = None, slow_mo: float | None = None, headers: Mapping[str, str] | None = None, is_local: bool | None = None, no_defaults: bool = True, artifacts_dir: str | None = None, connect_kwargs: Mapping[str, Any] | None = None) -> None:
         self.connection, self._stop = connection, stop
         self.stop_on_exit = stop_on_exit
-        self._connect_kwargs = _playwright_connect_kwargs(timeout=timeout, slow_mo=slow_mo, headers=headers, is_local=is_local, no_defaults=no_defaults, artifacts_dir=artifacts_dir, connect_kwargs=connect_kwargs)
+        self._connect_options = {
+            "timeout": timeout,
+            "slow_mo": slow_mo,
+            "headers": headers,
+            "is_local": is_local,
+            "no_defaults": no_defaults,
+            "artifacts_dir": artifacts_dir,
+            "connect_kwargs": connect_kwargs,
+        }
         self._playwright: Any = None
         self.browser: Any = None
         self._closed = False
 
     async def __aenter__(self) -> Any:
         try:
-            from playwright.async_api import async_playwright
-        except ImportError as exc:
-            raise ImportError("Install Playwright support with: pip install 'adspower[playwright]'") from exc
-        if not self.connection.playwright_cdp:
-            raise RuntimeError("AdsPower did not return a Playwright CDP endpoint")
-        self._playwright = await async_playwright().start()
-        self.browser = await self._playwright.chromium.connect_over_cdp(self.connection.playwright_cdp, **self._connect_kwargs)
-        return self.browser
+            try:
+                from playwright.async_api import async_playwright
+            except ImportError as exc:
+                raise ImportError("Install Playwright support with: pip install 'adspower[playwright]'") from exc
+            if not self.connection.playwright_cdp:
+                raise RuntimeError("AdsPower did not return a Playwright CDP endpoint")
+            connect_kwargs = _playwright_connect_kwargs(**self._connect_options)
+            self._playwright = await async_playwright().start()
+            self.browser = await self._playwright.chromium.connect_over_cdp(self.connection.playwright_cdp, **connect_kwargs)
+            return self.browser
+        except BaseException:
+            await self.close(preserve_error=True)
+            raise
 
     async def close(self, *, preserve_error: bool = False) -> None:
         if self._closed:

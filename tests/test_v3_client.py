@@ -178,13 +178,17 @@ def test_browser_start_uses_returned_endpoints_and_headless_contract() -> None:
         return response({"code": 0, "data": {}})
 
     with AdsPowerClient(transport=httpx.MockTransport(handler)) as client:
-        session = client.browsers.start("p1", headless=False)
+        session = client.browsers.start("p1", headless=False, start_maximized=True, launch_args=["--disable-extensions"])
         assert session.connection.playwright_cdp.endswith("/exact")
         assert session.connection.selenium == "remote.internal:44001"
         session.stop()
         session.stop()
 
-    assert json.loads(requests[0].content) == {"profile_id": "p1", "headless": "0"}
+    assert json.loads(requests[0].content) == {
+        "profile_id": "p1",
+        "headless": "0",
+        "launch_args": ["--disable-extensions", "--start-maximized"],
+    }
     assert [request.url.path for request in requests].count("/api/v2/browser-profile/stop") == 1
 
 
@@ -435,9 +439,6 @@ def test_selenium_adapter_uses_endpoint_without_headless(monkeypatch: pytest.Mon
             self.options = options
             calls.append(("driver", service))
 
-        def maximize_window(self) -> None:
-            calls.append("maximize")
-
         def quit(self) -> None:
             calls.append("quit")
 
@@ -459,7 +460,6 @@ def test_selenium_adapter_uses_endpoint_without_headless(monkeypatch: pytest.Mon
     adapter = SeleniumSession(
         BrowserConnection(selenium="remote:9222", webdriver="/driver"),
         stop=lambda: calls.append("stop"),
-        start_maximized=True,
         page_load_strategy="eager",
     )
     driver = adapter.__enter__()
@@ -468,7 +468,7 @@ def test_selenium_adapter_uses_endpoint_without_headless(monkeypatch: pytest.Mon
     assert driver.options.page_load_strategy == "eager"
     adapter.close()
     adapter.close()
-    assert calls[-3:] == ["maximize", "quit", "stop"]
+    assert calls[-2:] == ["quit", "stop"]
 
 
 def test_sync_playwright_adapter_uses_exact_cdp(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -481,8 +481,9 @@ def test_sync_playwright_adapter_uses_exact_cdp(monkeypatch: pytest.MonkeyPatch)
             calls.append("browser.close")
 
     class Chromium:
-        def connect_over_cdp(self, endpoint: str) -> Browser:
+        def connect_over_cdp(self, endpoint: str, **kwargs: object) -> Browser:
             calls.append(endpoint)
+            assert kwargs == {"no_defaults": True}
             return Browser()
 
     class Runtime:
@@ -516,8 +517,9 @@ async def test_async_playwright_adapter_uses_exact_cdp(monkeypatch: pytest.Monke
             calls.append("browser.close")
 
     class Chromium:
-        async def connect_over_cdp(self, endpoint: str) -> Browser:
+        async def connect_over_cdp(self, endpoint: str, **kwargs: object) -> Browser:
             calls.append(endpoint)
+            assert kwargs == {"no_defaults": True}
             return Browser()
 
     class Runtime:

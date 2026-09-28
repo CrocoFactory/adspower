@@ -48,6 +48,17 @@ jobs:
       - run: poetry run ruff check adspower tests
       - run: poetry run pytest tests/test_v3_client.py tests/test_modernization.py --cov=adspower --cov-report=term-missing --cov-fail-under=90
 
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - run: pip install poetry pyright
+      - run: poetry install --all-extras
+      - run: pyright adspower
+
   package:
     runs-on: ubuntu-latest
     steps:

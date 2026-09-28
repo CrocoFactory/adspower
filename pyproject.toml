@@ -17,7 +17,6 @@ classifiers = [
     'Programming Language :: Python :: 3.12',
     'Programming Language :: Python :: 3.13',
     'Programming Language :: Python :: 3.14',
-    'Programming Language :: Python :: 3.15',
     'License :: OSI Approved :: MIT License',
     'Operating System :: OS Independent',
     'License :: OSI Approved :: MIT License',
@@ -66,6 +65,10 @@ ignore = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
 "**/__init__.py" = ["F401"]
+
+[tool.pyright]
+pythonVersion = "3.10"
+typeCheckingMode = "basic"
 
 [tool.coverage.run]
 source = [
