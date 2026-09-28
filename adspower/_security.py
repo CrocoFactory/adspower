@@ -3,9 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from urllib.parse import SplitResult, urlsplit, urlunsplit
 
-SENSITIVE_KEY_PARTS = (
-    "password", "fakey", "cookie", "token", "api_key", "secret", "authorization", "proxy_url"
-)
+SENSITIVE_KEY_PARTS = ("password", "fakey", "cookie", "token", "api_key", "secret", "authorization", "proxy_url")
 
 
 def is_sensitive_key(key: object) -> bool:
@@ -15,10 +13,7 @@ def is_sensitive_key(key: object) -> bool:
 
 def redact_sensitive(value: object) -> object:
     if isinstance(value, Mapping):
-        return {
-            key: "<redacted>" if is_sensitive_key(key) else redact_sensitive(item)
-            for key, item in value.items()
-        }
+        return {key: "<redacted>" if is_sensitive_key(key) else redact_sensitive(item) for key, item in value.items()}
     if isinstance(value, list):
         return [redact_sensitive(item) for item in value]
     if isinstance(value, tuple):

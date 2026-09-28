@@ -111,9 +111,7 @@ def parse_page(
                 raw_items = meta[key]
                 break
         if raw_items is None:
-            raise AdsPowerProtocolError(
-                f"paginated response is missing one of: {', '.join(item_keys)}"
-            )
+            raise AdsPowerProtocolError(f"paginated response is missing one of: {', '.join(item_keys)}")
     items = require_list(raw_items, field="page items")
     page = optional_int(meta.get("page"), field="page") if meta else None
     page_size = optional_int(meta.get("page_size", meta.get("limit")), field="page_size") if meta else None

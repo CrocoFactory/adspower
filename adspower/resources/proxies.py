@@ -69,24 +69,50 @@ class ProxiesResource:
     def create_many(self, configs: Sequence[StoredProxyConfig]) -> tuple[str, ...]:
         if isinstance(configs, (str, bytes)) or not configs or len(configs) > 500:
             from ..errors import AdsPowerValidationError
+
             raise AdsPowerValidationError("configs must contain 1 to 500 proxies")
-        data = response_data(self._transport.request(c.PROXY_CREATE.method, c.PROXY_CREATE.path, json=[config.to_api() for config in configs]), c.PROXY_CREATE)
+        data = response_data(
+            self._transport.request(
+                c.PROXY_CREATE.method, c.PROXY_CREATE.path, json=[config.to_api() for config in configs]
+            ),
+            c.PROXY_CREATE,
+        )
         return _created_proxy_ids(data)
 
     def update(self, proxy_id: str, **options: Unpack[ProxyUpdateOptions]) -> None:
-        response_data(self._transport.request(c.PROXY_UPDATE.method, c.PROXY_UPDATE.path, json=_proxy_update(proxy_id, dict(options))), c.PROXY_UPDATE)
+        response_data(
+            self._transport.request(
+                c.PROXY_UPDATE.method, c.PROXY_UPDATE.path, json=_proxy_update(proxy_id, dict(options))
+            ),
+            c.PROXY_UPDATE,
+        )
 
     def list(self, *, proxy_ids: Sequence[str] | None = None, page: int = 1, page_size: int = 50) -> Page[Proxy]:
         validate_page(page, page_size, maximum=200)
-        body = compact({"proxy_id": [str(item) for item in proxy_ids] if proxy_ids is not None else None, "page": page, "limit": page_size})
+        body = compact(
+            {
+                "proxy_id": [str(item) for item in proxy_ids] if proxy_ids is not None else None,
+                "page": page,
+                "limit": page_size,
+            }
+        )
         data = response_data(self._transport.request(c.PROXY_LIST.method, c.PROXY_LIST.path, json=body), c.PROXY_LIST)
-        return parse_page(data, item_keys=("list", "items"), parser=parse_proxy, requested_page=page, requested_page_size=page_size)
+        return parse_page(
+            data, item_keys=("list", "items"), parser=parse_proxy, requested_page=page, requested_page_size=page_size
+        )
 
     def delete(self, proxy_id: str) -> None:
         self.delete_many([proxy_id])
 
     def delete_many(self, proxy_ids: Sequence[str]) -> None:
-        response_data(self._transport.request(c.PROXY_DELETE.method, c.PROXY_DELETE.path, json={"proxy_id": id_list(proxy_ids, name="proxy_ids", maximum=100)}), c.PROXY_DELETE)
+        response_data(
+            self._transport.request(
+                c.PROXY_DELETE.method,
+                c.PROXY_DELETE.path,
+                json={"proxy_id": id_list(proxy_ids, name="proxy_ids", maximum=100)},
+            ),
+            c.PROXY_DELETE,
+        )
 
 
 class AsyncProxiesResource:
@@ -99,21 +125,49 @@ class AsyncProxiesResource:
     async def create_many(self, configs: Sequence[StoredProxyConfig]) -> tuple[str, ...]:
         if isinstance(configs, (str, bytes)) or not configs or len(configs) > 500:
             from ..errors import AdsPowerValidationError
+
             raise AdsPowerValidationError("configs must contain 1 to 500 proxies")
-        data = response_data(await self._transport.request(c.PROXY_CREATE.method, c.PROXY_CREATE.path, json=[config.to_api() for config in configs]), c.PROXY_CREATE)
+        data = response_data(
+            await self._transport.request(
+                c.PROXY_CREATE.method, c.PROXY_CREATE.path, json=[config.to_api() for config in configs]
+            ),
+            c.PROXY_CREATE,
+        )
         return _created_proxy_ids(data)
 
     async def update(self, proxy_id: str, **options: Unpack[ProxyUpdateOptions]) -> None:
-        response_data(await self._transport.request(c.PROXY_UPDATE.method, c.PROXY_UPDATE.path, json=_proxy_update(proxy_id, dict(options))), c.PROXY_UPDATE)
+        response_data(
+            await self._transport.request(
+                c.PROXY_UPDATE.method, c.PROXY_UPDATE.path, json=_proxy_update(proxy_id, dict(options))
+            ),
+            c.PROXY_UPDATE,
+        )
 
     async def list(self, *, proxy_ids: Sequence[str] | None = None, page: int = 1, page_size: int = 50) -> Page[Proxy]:
         validate_page(page, page_size, maximum=200)
-        body = compact({"proxy_id": [str(item) for item in proxy_ids] if proxy_ids is not None else None, "page": page, "limit": page_size})
-        data = response_data(await self._transport.request(c.PROXY_LIST.method, c.PROXY_LIST.path, json=body), c.PROXY_LIST)
-        return parse_page(data, item_keys=("list", "items"), parser=parse_proxy, requested_page=page, requested_page_size=page_size)
+        body = compact(
+            {
+                "proxy_id": [str(item) for item in proxy_ids] if proxy_ids is not None else None,
+                "page": page,
+                "limit": page_size,
+            }
+        )
+        data = response_data(
+            await self._transport.request(c.PROXY_LIST.method, c.PROXY_LIST.path, json=body), c.PROXY_LIST
+        )
+        return parse_page(
+            data, item_keys=("list", "items"), parser=parse_proxy, requested_page=page, requested_page_size=page_size
+        )
 
     async def delete(self, proxy_id: str) -> None:
         await self.delete_many([proxy_id])
 
     async def delete_many(self, proxy_ids: Sequence[str]) -> None:
-        response_data(await self._transport.request(c.PROXY_DELETE.method, c.PROXY_DELETE.path, json={"proxy_id": id_list(proxy_ids, name="proxy_ids", maximum=100)}), c.PROXY_DELETE)
+        response_data(
+            await self._transport.request(
+                c.PROXY_DELETE.method,
+                c.PROXY_DELETE.path,
+                json={"proxy_id": id_list(proxy_ids, name="proxy_ids", maximum=100)},
+            ),
+            c.PROXY_DELETE,
+        )

@@ -133,6 +133,7 @@ def _cookies(value: object) -> tuple[JsonObject, ...]:
     raw = data.get("cookies", data.get("cookie"))
     if isinstance(raw, str):
         import json
+
         try:
             raw = json.loads(raw)
         except json.JSONDecodeError as exc:
@@ -160,13 +161,17 @@ class ProfilesResource:
     ) -> CreatedProfile:
         body = _profile_fields(dict(options), create=True)
         body.update(compact({"group_id": str(group_id), "name": name}))
-        data = response_data(self._transport.request(c.PROFILE_CREATE.method, c.PROFILE_CREATE.path, json=body), c.PROFILE_CREATE)
+        data = response_data(
+            self._transport.request(c.PROFILE_CREATE.method, c.PROFILE_CREATE.path, json=body), c.PROFILE_CREATE
+        )
         return parse_created_profile(data)
 
     def update(self, profile_id: str, **options: Unpack[ProfileUpdateOptions]) -> None:
         body = _profile_fields(dict(options), create=False)
         body["profile_id"] = profile_id
-        response_data(self._transport.request(c.PROFILE_UPDATE.method, c.PROFILE_UPDATE.path, json=body), c.PROFILE_UPDATE)
+        response_data(
+            self._transport.request(c.PROFILE_UPDATE.method, c.PROFILE_UPDATE.path, json=body), c.PROFILE_UPDATE
+        )
 
     def list(
         self,
@@ -184,19 +189,37 @@ class ProfilesResource:
         page_size: int = 200,
     ) -> Page[Profile]:
         validate_page(page, page_size, maximum=200)
+
         def many(value: Sequence[str] | str | None) -> JsonValue | None:
             if value is None:
                 return None
             return [value] if isinstance(value, str) else [str(item) for item in value]
-        body = compact({
-            "group_id": group_id, "profile_id": many(profile_id), "profile_no": many(profile_no),
-            "sort_type": sort_type, "sort_order": sort_order,
-            "tag_ids": [str(item) for item in tag_ids] if tag_ids is not None else None,
-            "tags_filter": tags_filter, "name": name, "name_filter": name_filter,
-            "page": page, "limit": page_size,
-        })
-        data = response_data(self._transport.request(c.PROFILE_LIST.method, c.PROFILE_LIST.path, json=body), c.PROFILE_LIST)
-        return parse_page(data, item_keys=("list", "profiles", "items"), parser=parse_profile, requested_page=page, requested_page_size=page_size)
+
+        body = compact(
+            {
+                "group_id": group_id,
+                "profile_id": many(profile_id),
+                "profile_no": many(profile_no),
+                "sort_type": sort_type,
+                "sort_order": sort_order,
+                "tag_ids": [str(item) for item in tag_ids] if tag_ids is not None else None,
+                "tags_filter": tags_filter,
+                "name": name,
+                "name_filter": name_filter,
+                "page": page,
+                "limit": page_size,
+            }
+        )
+        data = response_data(
+            self._transport.request(c.PROFILE_LIST.method, c.PROFILE_LIST.path, json=body), c.PROFILE_LIST
+        )
+        return parse_page(
+            data,
+            item_keys=("list", "profiles", "items"),
+            parser=parse_profile,
+            requested_page=page,
+            requested_page_size=page_size,
+        )
 
     def iter_all(self, **kwargs: object) -> Iterator[Profile]:
         page_value = kwargs.pop("page", 1)
@@ -229,15 +252,31 @@ class ProfilesResource:
         self.delete_many([profile_id])
 
     def delete_many(self, profile_ids: Sequence[str]) -> None:
-        response_data(self._transport.request(c.PROFILE_DELETE.method, c.PROFILE_DELETE.path, json={"profile_id": id_list(profile_ids, name="profile_ids")}), c.PROFILE_DELETE)
+        response_data(
+            self._transport.request(
+                c.PROFILE_DELETE.method,
+                c.PROFILE_DELETE.path,
+                json={"profile_id": id_list(profile_ids, name="profile_ids")},
+            ),
+            c.PROFILE_DELETE,
+        )
 
     def move(self, profile_ids: Sequence[str], group_id: str) -> None:
-        response_data(self._transport.request(c.PROFILE_MOVE.method, c.PROFILE_MOVE.path, json={"user_ids": id_list(profile_ids, name="profile_ids"), "group_id": str(group_id)}), c.PROFILE_MOVE)
+        response_data(
+            self._transport.request(
+                c.PROFILE_MOVE.method,
+                c.PROFILE_MOVE.path,
+                json={"user_ids": id_list(profile_ids, name="profile_ids"), "group_id": str(group_id)},
+            ),
+            c.PROFILE_MOVE,
+        )
 
     def cookies(self, *, profile_id: str | None = None, profile_no: str | None = None) -> tuple[JsonObject, ...]:
         payload = selector(profile_id, profile_no)
         params = {key: str(value) for key, value in payload.items()}
-        data = response_data(self._transport.request(c.PROFILE_COOKIES.method, c.PROFILE_COOKIES.path, params=params), c.PROFILE_COOKIES)
+        data = response_data(
+            self._transport.request(c.PROFILE_COOKIES.method, c.PROFILE_COOKIES.path, params=params), c.PROFILE_COOKIES
+        )
         return _cookies(data)
 
     def user_agents(
@@ -251,9 +290,7 @@ class ProfilesResource:
         values = profile_ids if profile_ids is not None else profile_nos
         assert values is not None
         body: JsonObject = {
-            "profile_id" if profile_ids is not None else "profile_no": id_list(
-                values, name="profiles", maximum=10
-            )
+            "profile_id" if profile_ids is not None else "profile_no": id_list(values, name="profiles", maximum=10)
         }
         data = response_data(self._transport.request(c.PROFILE_UA.method, c.PROFILE_UA.path, json=body), c.PROFILE_UA)
         return _user_agents(data)
@@ -269,16 +306,24 @@ class ProfilesResource:
         values = profile_ids if profile_ids is not None else profile_nos
         assert values is not None
         body: JsonObject = {
-            "profile_id" if profile_ids is not None else "profile_no": id_list(
-                values, name="profiles", maximum=10
-            )
+            "profile_id" if profile_ids is not None else "profile_no": id_list(values, name="profiles", maximum=10)
         }
-        return response_data(self._transport.request(c.PROFILE_NEW_FINGERPRINT.method, c.PROFILE_NEW_FINGERPRINT.path, json=body), c.PROFILE_NEW_FINGERPRINT)
+        return response_data(
+            self._transport.request(c.PROFILE_NEW_FINGERPRINT.method, c.PROFILE_NEW_FINGERPRINT.path, json=body),
+            c.PROFILE_NEW_FINGERPRINT,
+        )
 
     def delete_cache(self, profile_ids: Sequence[str], cache_types: Sequence[CacheType]) -> None:
         if isinstance(cache_types, (str, bytes)) or not cache_types:
             raise AdsPowerValidationError("cache_types must be a non-empty sequence")
-        response_data(self._transport.request(c.PROFILE_DELETE_CACHE.method, c.PROFILE_DELETE_CACHE.path, json={"profile_id": id_list(profile_ids, name="profile_ids"), "type": list(cache_types)}), c.PROFILE_DELETE_CACHE)
+        response_data(
+            self._transport.request(
+                c.PROFILE_DELETE_CACHE.method,
+                c.PROFILE_DELETE_CACHE.path,
+                json={"profile_id": id_list(profile_ids, name="profile_ids"), "type": list(cache_types)},
+            ),
+            c.PROFILE_DELETE_CACHE,
+        )
 
     def share(
         self,
@@ -288,28 +333,39 @@ class ProfilesResource:
         share_type: Literal["email", "phone"] = "email",
         content: Sequence[Literal["name", "proxy", "remark", "tabs"]] | None = None,
     ) -> JsonValue | None:
-        body = compact({
-            "profile_id": id_list(profile_ids, name="profile_ids", maximum=200),
-            "receiver": receiver, "share_type": 1 if share_type == "email" else 2,
-            "content": list(content) if content is not None else None,
-        })
-        return response_data(self._transport.request(c.PROFILE_SHARE.method, c.PROFILE_SHARE.path, json=body), c.PROFILE_SHARE)
+        body = compact(
+            {
+                "profile_id": id_list(profile_ids, name="profile_ids", maximum=200),
+                "receiver": receiver,
+                "share_type": 1 if share_type == "email" else 2,
+                "content": list(content) if content is not None else None,
+            }
+        )
+        return response_data(
+            self._transport.request(c.PROFILE_SHARE.method, c.PROFILE_SHARE.path, json=body), c.PROFILE_SHARE
+        )
 
 
 class AsyncProfilesResource:
     def __init__(self, transport: AsyncTransportProtocol) -> None:
         self._transport = transport
 
-    async def create(self, *, group_id: str = "0", name: str | None = None, **options: Unpack[ProfileCreateOptions]) -> CreatedProfile:
+    async def create(
+        self, *, group_id: str = "0", name: str | None = None, **options: Unpack[ProfileCreateOptions]
+    ) -> CreatedProfile:
         body = _profile_fields(dict(options), create=True)
         body.update(compact({"group_id": str(group_id), "name": name}))
-        data = response_data(await self._transport.request(c.PROFILE_CREATE.method, c.PROFILE_CREATE.path, json=body), c.PROFILE_CREATE)
+        data = response_data(
+            await self._transport.request(c.PROFILE_CREATE.method, c.PROFILE_CREATE.path, json=body), c.PROFILE_CREATE
+        )
         return parse_created_profile(data)
 
     async def update(self, profile_id: str, **options: Unpack[ProfileUpdateOptions]) -> None:
         body = _profile_fields(dict(options), create=False)
         body["profile_id"] = profile_id
-        response_data(await self._transport.request(c.PROFILE_UPDATE.method, c.PROFILE_UPDATE.path, json=body), c.PROFILE_UPDATE)
+        response_data(
+            await self._transport.request(c.PROFILE_UPDATE.method, c.PROFILE_UPDATE.path, json=body), c.PROFILE_UPDATE
+        )
 
     async def list(self, **kwargs: object) -> Page[Profile]:
         # Keep request construction shared by using the sync builder on a capture transport.
@@ -331,6 +387,7 @@ class AsyncProfilesResource:
         if kwargs:
             raise AdsPowerValidationError(f"unknown profile list arguments: {', '.join(kwargs)}")
         validate_page(page, page_size, maximum=200)
+
         def many(value: object) -> JsonValue | None:
             if value is None:
                 return None
@@ -339,19 +396,34 @@ class AsyncProfilesResource:
             if isinstance(value, Sequence):
                 return [str(item) for item in value]
             raise AdsPowerValidationError("profile_id/profile_no must be strings or sequences")
-        body = compact({
-            "group_id": str(group_id) if group_id is not None else None,
-            "profile_id": many(profile_id), "profile_no": many(profile_no),
-            "sort_type": str(sort_type) if sort_type is not None else None,
-            "sort_order": str(sort_order) if sort_order is not None else None,
-            "tag_ids": [str(item) for item in tag_ids] if isinstance(tag_ids, Sequence) and not isinstance(tag_ids, (str, bytes)) else None,
-            "tags_filter": str(tags_filter) if tags_filter is not None else None,
-            "name": str(name) if name is not None else None,
-            "name_filter": str(name_filter) if name_filter is not None else None,
-            "page": page, "limit": page_size,
-        })
-        data = response_data(await self._transport.request(c.PROFILE_LIST.method, c.PROFILE_LIST.path, json=body), c.PROFILE_LIST)
-        return parse_page(data, item_keys=("list", "profiles", "items"), parser=parse_profile, requested_page=page, requested_page_size=page_size)
+
+        body = compact(
+            {
+                "group_id": str(group_id) if group_id is not None else None,
+                "profile_id": many(profile_id),
+                "profile_no": many(profile_no),
+                "sort_type": str(sort_type) if sort_type is not None else None,
+                "sort_order": str(sort_order) if sort_order is not None else None,
+                "tag_ids": [str(item) for item in tag_ids]
+                if isinstance(tag_ids, Sequence) and not isinstance(tag_ids, (str, bytes))
+                else None,
+                "tags_filter": str(tags_filter) if tags_filter is not None else None,
+                "name": str(name) if name is not None else None,
+                "name_filter": str(name_filter) if name_filter is not None else None,
+                "page": page,
+                "limit": page_size,
+            }
+        )
+        data = response_data(
+            await self._transport.request(c.PROFILE_LIST.method, c.PROFILE_LIST.path, json=body), c.PROFILE_LIST
+        )
+        return parse_page(
+            data,
+            item_keys=("list", "profiles", "items"),
+            parser=parse_profile,
+            requested_page=page,
+            requested_page_size=page_size,
+        )
 
     async def iter_all(self, **kwargs: object) -> AsyncIterator[Profile]:
         page_value = kwargs.pop("page", 1)
@@ -385,51 +457,92 @@ class AsyncProfilesResource:
         await self.delete_many([profile_id])
 
     async def delete_many(self, profile_ids: Sequence[str]) -> None:
-        response_data(await self._transport.request(c.PROFILE_DELETE.method, c.PROFILE_DELETE.path, json={"profile_id": id_list(profile_ids, name="profile_ids")}), c.PROFILE_DELETE)
+        response_data(
+            await self._transport.request(
+                c.PROFILE_DELETE.method,
+                c.PROFILE_DELETE.path,
+                json={"profile_id": id_list(profile_ids, name="profile_ids")},
+            ),
+            c.PROFILE_DELETE,
+        )
 
     async def move(self, profile_ids: Sequence[str], group_id: str) -> None:
-        response_data(await self._transport.request(c.PROFILE_MOVE.method, c.PROFILE_MOVE.path, json={"user_ids": id_list(profile_ids, name="profile_ids"), "group_id": str(group_id)}), c.PROFILE_MOVE)
+        response_data(
+            await self._transport.request(
+                c.PROFILE_MOVE.method,
+                c.PROFILE_MOVE.path,
+                json={"user_ids": id_list(profile_ids, name="profile_ids"), "group_id": str(group_id)},
+            ),
+            c.PROFILE_MOVE,
+        )
 
     async def cookies(self, *, profile_id: str | None = None, profile_no: str | None = None) -> tuple[JsonObject, ...]:
         payload = selector(profile_id, profile_no)
         params = {key: str(value) for key, value in payload.items()}
-        data = response_data(await self._transport.request(c.PROFILE_COOKIES.method, c.PROFILE_COOKIES.path, params=params), c.PROFILE_COOKIES)
+        data = response_data(
+            await self._transport.request(c.PROFILE_COOKIES.method, c.PROFILE_COOKIES.path, params=params),
+            c.PROFILE_COOKIES,
+        )
         return _cookies(data)
 
-    async def user_agents(self, *, profile_ids: Sequence[str] | None = None, profile_nos: Sequence[str] | None = None) -> JsonValue:
+    async def user_agents(
+        self, *, profile_ids: Sequence[str] | None = None, profile_nos: Sequence[str] | None = None
+    ) -> JsonValue:
         if bool(profile_ids) == bool(profile_nos):
             raise AdsPowerValidationError("provide exactly one of profile_ids or profile_nos")
         values = profile_ids if profile_ids is not None else profile_nos
         assert values is not None
         body: JsonObject = {
-            "profile_id" if profile_ids is not None else "profile_no": id_list(
-                values, name="profiles", maximum=10
-            )
+            "profile_id" if profile_ids is not None else "profile_no": id_list(values, name="profiles", maximum=10)
         }
-        data = response_data(await self._transport.request(c.PROFILE_UA.method, c.PROFILE_UA.path, json=body), c.PROFILE_UA)
+        data = response_data(
+            await self._transport.request(c.PROFILE_UA.method, c.PROFILE_UA.path, json=body), c.PROFILE_UA
+        )
         return _user_agents(data)
 
-    async def new_fingerprint(self, *, profile_ids: Sequence[str] | None = None, profile_nos: Sequence[str] | None = None) -> JsonValue | None:
+    async def new_fingerprint(
+        self, *, profile_ids: Sequence[str] | None = None, profile_nos: Sequence[str] | None = None
+    ) -> JsonValue | None:
         if bool(profile_ids) == bool(profile_nos):
             raise AdsPowerValidationError("provide exactly one of profile_ids or profile_nos")
         values = profile_ids if profile_ids is not None else profile_nos
         assert values is not None
         body: JsonObject = {
-            "profile_id" if profile_ids is not None else "profile_no": id_list(
-                values, name="profiles", maximum=10
-            )
+            "profile_id" if profile_ids is not None else "profile_no": id_list(values, name="profiles", maximum=10)
         }
-        return response_data(await self._transport.request(c.PROFILE_NEW_FINGERPRINT.method, c.PROFILE_NEW_FINGERPRINT.path, json=body), c.PROFILE_NEW_FINGERPRINT)
+        return response_data(
+            await self._transport.request(c.PROFILE_NEW_FINGERPRINT.method, c.PROFILE_NEW_FINGERPRINT.path, json=body),
+            c.PROFILE_NEW_FINGERPRINT,
+        )
 
     async def delete_cache(self, profile_ids: Sequence[str], cache_types: Sequence[CacheType]) -> None:
         if isinstance(cache_types, (str, bytes)) or not cache_types:
             raise AdsPowerValidationError("cache_types must be a non-empty sequence")
-        response_data(await self._transport.request(c.PROFILE_DELETE_CACHE.method, c.PROFILE_DELETE_CACHE.path, json={"profile_id": id_list(profile_ids, name="profile_ids"), "type": list(cache_types)}), c.PROFILE_DELETE_CACHE)
+        response_data(
+            await self._transport.request(
+                c.PROFILE_DELETE_CACHE.method,
+                c.PROFILE_DELETE_CACHE.path,
+                json={"profile_id": id_list(profile_ids, name="profile_ids"), "type": list(cache_types)},
+            ),
+            c.PROFILE_DELETE_CACHE,
+        )
 
-    async def share(self, profile_ids: Sequence[str], receiver: str, *, share_type: Literal["email", "phone"] = "email", content: Sequence[Literal["name", "proxy", "remark", "tabs"]] | None = None) -> JsonValue | None:
-        body = compact({
-            "profile_id": id_list(profile_ids, name="profile_ids", maximum=200),
-            "receiver": receiver, "share_type": 1 if share_type == "email" else 2,
-            "content": list(content) if content is not None else None,
-        })
-        return response_data(await self._transport.request(c.PROFILE_SHARE.method, c.PROFILE_SHARE.path, json=body), c.PROFILE_SHARE)
+    async def share(
+        self,
+        profile_ids: Sequence[str],
+        receiver: str,
+        *,
+        share_type: Literal["email", "phone"] = "email",
+        content: Sequence[Literal["name", "proxy", "remark", "tabs"]] | None = None,
+    ) -> JsonValue | None:
+        body = compact(
+            {
+                "profile_id": id_list(profile_ids, name="profile_ids", maximum=200),
+                "receiver": receiver,
+                "share_type": 1 if share_type == "email" else 2,
+                "content": list(content) if content is not None else None,
+            }
+        )
+        return response_data(
+            await self._transport.request(c.PROFILE_SHARE.method, c.PROFILE_SHARE.path, json=body), c.PROFILE_SHARE
+        )

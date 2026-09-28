@@ -63,9 +63,7 @@ def decode_response(
     if status >= 400:
         kwargs = {"method": method, "path": path, "status": status}
         if status in {401, 403}:
-            raise AdsPowerAuthenticationError(
-                f"AdsPower rejected credentials ({method} {path})", **kwargs
-            )
+            raise AdsPowerAuthenticationError(f"AdsPower rejected credentials ({method} {path})", **kwargs)
         if status == 429:
             raise AdsPowerRateLimitError(
                 f"AdsPower rate limit exceeded ({method} {path})",

@@ -13,8 +13,12 @@ class CategoriesResource:
     def list(self, *, category_id: str | None = None, page: int = 1, page_size: int = 200) -> Page[Category]:
         validate_page(page, page_size, maximum=200)
         params = {"category_id": category_id, "page": page, "limit": page_size}
-        data = response_data(self._transport.request(c.CATEGORY_LIST.method, c.CATEGORY_LIST.path, params=params), c.CATEGORY_LIST)
-        return parse_page(data, item_keys=("list", "items"), parser=parse_category, requested_page=page, requested_page_size=page_size)
+        data = response_data(
+            self._transport.request(c.CATEGORY_LIST.method, c.CATEGORY_LIST.path, params=params), c.CATEGORY_LIST
+        )
+        return parse_page(
+            data, item_keys=("list", "items"), parser=parse_category, requested_page=page, requested_page_size=page_size
+        )
 
 
 class AsyncCategoriesResource:
@@ -24,5 +28,9 @@ class AsyncCategoriesResource:
     async def list(self, *, category_id: str | None = None, page: int = 1, page_size: int = 200) -> Page[Category]:
         validate_page(page, page_size, maximum=200)
         params = {"category_id": category_id, "page": page, "limit": page_size}
-        data = response_data(await self._transport.request(c.CATEGORY_LIST.method, c.CATEGORY_LIST.path, params=params), c.CATEGORY_LIST)
-        return parse_page(data, item_keys=("list", "items"), parser=parse_category, requested_page=page, requested_page_size=page_size)
+        data = response_data(
+            await self._transport.request(c.CATEGORY_LIST.method, c.CATEGORY_LIST.path, params=params), c.CATEGORY_LIST
+        )
+        return parse_page(
+            data, item_keys=("list", "items"), parser=parse_category, requested_page=page, requested_page_size=page_size
+        )

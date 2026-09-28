@@ -24,11 +24,21 @@ class KernelsResource:
         self._transport = transport
 
     def list(self, *, kernel_type: Literal["Chrome", "Firefox"] | None = None) -> tuple[KernelInfo, ...]:
-        data = response_data(self._transport.request(c.KERNEL_LIST.method, c.KERNEL_LIST.path, params={"kernel_type": kernel_type}), c.KERNEL_LIST)
+        data = response_data(
+            self._transport.request(c.KERNEL_LIST.method, c.KERNEL_LIST.path, params={"kernel_type": kernel_type}),
+            c.KERNEL_LIST,
+        )
         return _kernels(data)
 
     def download(self, kernel_type: Literal["Chrome", "Firefox"], kernel_version: str) -> JsonValue | None:
-        return response_data(self._transport.request(c.KERNEL_DOWNLOAD.method, c.KERNEL_DOWNLOAD.path, json={"kernel_type": kernel_type, "kernel_version": kernel_version}), c.KERNEL_DOWNLOAD)
+        return response_data(
+            self._transport.request(
+                c.KERNEL_DOWNLOAD.method,
+                c.KERNEL_DOWNLOAD.path,
+                json={"kernel_type": kernel_type, "kernel_version": kernel_version},
+            ),
+            c.KERNEL_DOWNLOAD,
+        )
 
 
 class AsyncKernelsResource:
@@ -36,8 +46,20 @@ class AsyncKernelsResource:
         self._transport = transport
 
     async def list(self, *, kernel_type: Literal["Chrome", "Firefox"] | None = None) -> tuple[KernelInfo, ...]:
-        data = response_data(await self._transport.request(c.KERNEL_LIST.method, c.KERNEL_LIST.path, params={"kernel_type": kernel_type}), c.KERNEL_LIST)
+        data = response_data(
+            await self._transport.request(
+                c.KERNEL_LIST.method, c.KERNEL_LIST.path, params={"kernel_type": kernel_type}
+            ),
+            c.KERNEL_LIST,
+        )
         return _kernels(data)
 
     async def download(self, kernel_type: Literal["Chrome", "Firefox"], kernel_version: str) -> JsonValue | None:
-        return response_data(await self._transport.request(c.KERNEL_DOWNLOAD.method, c.KERNEL_DOWNLOAD.path, json={"kernel_type": kernel_type, "kernel_version": kernel_version}), c.KERNEL_DOWNLOAD)
+        return response_data(
+            await self._transport.request(
+                c.KERNEL_DOWNLOAD.method,
+                c.KERNEL_DOWNLOAD.path,
+                json={"kernel_type": kernel_type, "kernel_version": kernel_version},
+            ),
+            c.KERNEL_DOWNLOAD,
+        )

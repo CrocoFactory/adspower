@@ -32,9 +32,7 @@ def install_sync_playwright(monkeypatch: pytest.MonkeyPatch, browser: FakeBrowse
     events: list[str] = []
 
     class Runtime:
-        chromium = types.SimpleNamespace(
-            connect_over_cdp=lambda endpoint, **kwargs: browser
-        )
+        chromium = types.SimpleNamespace(connect_over_cdp=lambda endpoint, **kwargs: browser)
 
         def stop(self) -> None:
             events.append("runtime-stop")
@@ -55,9 +53,7 @@ def install_sync_playwright(monkeypatch: pytest.MonkeyPatch, browser: FakeBrowse
 def test_sync_playwright_adapter_owns_only_attachment(monkeypatch: pytest.MonkeyPatch) -> None:
     browser = FakeBrowser()
     events = install_sync_playwright(monkeypatch, browser)
-    adapter = PlaywrightAdapter(
-        BrowserConnection(playwright_cdp_url="ws://localhost/devtools/browser/id")
-    )
+    adapter = PlaywrightAdapter(BrowserConnection(playwright_cdp_url="ws://localhost/devtools/browser/id"))
     with adapter as connected:
         assert connected is browser
     assert browser.closed
@@ -105,9 +101,7 @@ async def test_async_playwright_cleanup(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setitem(sys.modules, "playwright", package)
     monkeypatch.setitem(sys.modules, "playwright.async_api", module)
 
-    adapter = AsyncPlaywrightAdapter(
-        BrowserConnection(playwright_cdp_url="ws://localhost/devtools/browser/id")
-    )
+    adapter = AsyncPlaywrightAdapter(BrowserConnection(playwright_cdp_url="ws://localhost/devtools/browser/id"))
     async with adapter as connected:
         assert connected is browser
     assert browser.closed

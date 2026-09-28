@@ -22,6 +22,8 @@ def parse_kernel(value: object) -> KernelInfo:
     if kernel_type is None or version is None:
         raise AdsPowerProtocolError("kernel response requires kernel type and version")
     return KernelInfo(
-        kernel_type, version, optional_string(data.get("status"), field="status"),
+        kernel_type,
+        version,
+        optional_string(data.get("status"), field="status"),
         collect_extra(data, {"kernel_type", "type", "kernel_version", "version", "status"}),
     )

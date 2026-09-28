@@ -57,20 +57,39 @@ class TagsResource:
         if ids is not None:
             body["ids"] = [str(item) for item in ids]
         data = response_data(self._transport.request(c.TAG_LIST.method, c.TAG_LIST.path, json=body), c.TAG_LIST)
-        return parse_page(data, item_keys=("list", "items", "tags"), parser=parse_browser_tag, requested_page=page, requested_page_size=page_size)
+        return parse_page(
+            data,
+            item_keys=("list", "items", "tags"),
+            parser=parse_browser_tag,
+            requested_page=page,
+            requested_page_size=page_size,
+        )
 
     def create(self, tags: Sequence[TagCreate]) -> JsonValue | None:
         if not tags:
             raise AdsPowerValidationError("tags must not be empty")
-        return response_data(self._transport.request(c.TAG_CREATE.method, c.TAG_CREATE.path, json={"tags": [tag.to_api() for tag in tags]}), c.TAG_CREATE)
+        return response_data(
+            self._transport.request(
+                c.TAG_CREATE.method, c.TAG_CREATE.path, json={"tags": [tag.to_api() for tag in tags]}
+            ),
+            c.TAG_CREATE,
+        )
 
     def update(self, tags: Sequence[TagUpdate]) -> None:
         if not tags:
             raise AdsPowerValidationError("tags must not be empty")
-        response_data(self._transport.request(c.TAG_UPDATE.method, c.TAG_UPDATE.path, json={"tags": [tag.to_api() for tag in tags]}), c.TAG_UPDATE)
+        response_data(
+            self._transport.request(
+                c.TAG_UPDATE.method, c.TAG_UPDATE.path, json={"tags": [tag.to_api() for tag in tags]}
+            ),
+            c.TAG_UPDATE,
+        )
 
     def delete(self, ids: Sequence[str]) -> None:
-        response_data(self._transport.request(c.TAG_DELETE.method, c.TAG_DELETE.path, json={"ids": id_list(ids, name="ids")}), c.TAG_DELETE)
+        response_data(
+            self._transport.request(c.TAG_DELETE.method, c.TAG_DELETE.path, json={"ids": id_list(ids, name="ids")}),
+            c.TAG_DELETE,
+        )
 
 
 class AsyncTagsResource:
@@ -85,17 +104,38 @@ class AsyncTagsResource:
         if ids is not None:
             body["ids"] = [str(item) for item in ids]
         data = response_data(await self._transport.request(c.TAG_LIST.method, c.TAG_LIST.path, json=body), c.TAG_LIST)
-        return parse_page(data, item_keys=("list", "items", "tags"), parser=parse_browser_tag, requested_page=page, requested_page_size=page_size)
+        return parse_page(
+            data,
+            item_keys=("list", "items", "tags"),
+            parser=parse_browser_tag,
+            requested_page=page,
+            requested_page_size=page_size,
+        )
 
     async def create(self, tags: Sequence[TagCreate]) -> JsonValue | None:
         if not tags:
             raise AdsPowerValidationError("tags must not be empty")
-        return response_data(await self._transport.request(c.TAG_CREATE.method, c.TAG_CREATE.path, json={"tags": [tag.to_api() for tag in tags]}), c.TAG_CREATE)
+        return response_data(
+            await self._transport.request(
+                c.TAG_CREATE.method, c.TAG_CREATE.path, json={"tags": [tag.to_api() for tag in tags]}
+            ),
+            c.TAG_CREATE,
+        )
 
     async def update(self, tags: Sequence[TagUpdate]) -> None:
         if not tags:
             raise AdsPowerValidationError("tags must not be empty")
-        response_data(await self._transport.request(c.TAG_UPDATE.method, c.TAG_UPDATE.path, json={"tags": [tag.to_api() for tag in tags]}), c.TAG_UPDATE)
+        response_data(
+            await self._transport.request(
+                c.TAG_UPDATE.method, c.TAG_UPDATE.path, json={"tags": [tag.to_api() for tag in tags]}
+            ),
+            c.TAG_UPDATE,
+        )
 
     async def delete(self, ids: Sequence[str]) -> None:
-        response_data(await self._transport.request(c.TAG_DELETE.method, c.TAG_DELETE.path, json={"ids": id_list(ids, name="ids")}), c.TAG_DELETE)
+        response_data(
+            await self._transport.request(
+                c.TAG_DELETE.method, c.TAG_DELETE.path, json={"ids": id_list(ids, name="ids")}
+            ),
+            c.TAG_DELETE,
+        )

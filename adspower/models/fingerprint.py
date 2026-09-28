@@ -116,9 +116,12 @@ class InlineProxyConfig:
     def to_api(self) -> JsonObject:
         result: JsonObject = {"proxy_soft": self.proxy_soft}
         values = {
-            "proxy_type": self.proxy_type, "proxy_host": self.host,
+            "proxy_type": self.proxy_type,
+            "proxy_host": self.host,
             "proxy_port": str(self.port) if self.port is not None else None,
-            "proxy_user": self.user, "proxy_password": self.password, "proxy_url": self.proxy_url,
+            "proxy_user": self.user,
+            "proxy_password": self.password,
+            "proxy_url": self.proxy_url,
             "global_config": _bool(self.global_config) if self.global_config is not None else None,
         }
         result.update({key: value for key, value in values.items() if value is not None})
@@ -204,17 +207,24 @@ class FingerprintConfig:
             "automatic_timezone": _bool(self.automatic_timezone) if self.automatic_timezone is not None else None,
             "timezone": self.timezone,
             "location_switch": _bool(self.location_by_ip) if self.location_by_ip is not None else None,
-            "longitude": self.longitude, "latitude": self.latitude, "accuracy": self.accuracy,
+            "longitude": self.longitude,
+            "latitude": self.latitude,
+            "accuracy": self.accuracy,
             "location": self.location_permission,
             "language_switch": _bool(self.language_by_ip) if self.language_by_ip is not None else None,
-            "page_language_switch": _bool(self.page_language_matches) if self.page_language_matches is not None else None,
-            "page_language": self.page_language, "ua": self.user_agent,
+            "page_language_switch": _bool(self.page_language_matches)
+            if self.page_language_matches is not None
+            else None,
+            "page_language": self.page_language,
+            "ua": self.user_agent,
             "screen_resolution": self.screen_resolution,
             "canvas": _bool(self.canvas_noise) if self.canvas_noise is not None else None,
             "webgl_image": _bool(self.webgl_image_noise) if self.webgl_image_noise is not None else None,
-            "flash": self.flash, "webrtc": self.webrtc,
+            "flash": self.flash,
+            "webrtc": self.webrtc,
             "audio": _bool(self.audio_noise) if self.audio_noise is not None else None,
-            "do_not_track": self.do_not_track, "hardware_concurrency": self.hardware_concurrency,
+            "do_not_track": self.do_not_track,
+            "hardware_concurrency": self.hardware_concurrency,
             "device_memory": self.device_memory,
             "scan_port_type": _bool(self.port_scan_protection) if self.port_scan_protection is not None else None,
             "client_rects": _bool(self.client_rects_noise) if self.client_rects_noise is not None else None,

@@ -62,15 +62,8 @@ def parse_browser_connection(value: object) -> BrowserConnection:
     selenium_s = optional_string(selenium, field="ws.selenium")
     playwright_s = optional_string(playwright, field="ws.puppeteer")
     debug_port = optional_int(data.get("debug_port"), field="debug_port")
-    if (
-        selenium_s is None
-        and debug_port is None
-        and playwright_s is None
-        and data.get("marionette_port") is None
-    ):
-        raise AdsPowerProtocolError(
-            "browser start response does not contain a usable connection endpoint"
-        )
+    if selenium_s is None and debug_port is None and playwright_s is None and data.get("marionette_port") is None:
+        raise AdsPowerProtocolError("browser start response does not contain a usable connection endpoint")
     known = {
         "ws",
         "debug_port",
@@ -99,10 +92,7 @@ def parse_browser_status(value: object) -> BrowserStatus:
     if status is None:
         raise AdsPowerProtocolError("browser status response is missing status")
     connection = None
-    if any(
-        key in data
-        for key in ("ws", "debug_port", "selenium", "playwright_cdp", "marionette_port")
-    ):
+    if any(key in data for key in ("ws", "debug_port", "selenium", "playwright_cdp", "marionette_port")):
         connection = parse_browser_connection(data)
     return BrowserStatus(
         status,

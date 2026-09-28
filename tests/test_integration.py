@@ -33,19 +33,14 @@ def test_real_disposable_profile_crud_and_catalog_reads() -> None:
     with AdsPowerClient() as client:
         groups = client.groups.list(page_size=1)
         categories = client.categories.list(page_size=1)
-        group_id = os.getenv("ADSPOWER_TEST_GROUP_ID") or (
-            groups.items[0].group_id if groups.items else "0"
-        )
+        group_id = os.getenv("ADSPOWER_TEST_GROUP_ID") or (groups.items[0].group_id if groups.items else "0")
         try:
             created = client.profiles.create(name=profile_name, group_id=group_id)
             profile_id = created.profile_id
             assert client.profiles.get(profile_id).name == profile_name
             client.profiles.update(profile_id, name=f"{profile_name}-updated")
             assert client.profiles.get(profile_id).name == f"{profile_name}-updated"
-            assert any(
-                item.profile_id == profile_id
-                for item in client.profiles.list(profile_id=profile_id).items
-            )
+            assert any(item.profile_id == profile_id for item in client.profiles.list(profile_id=profile_id).items)
             assert isinstance(client.profiles.cookies(profile_id=profile_id), tuple)
             client.profiles.delete_cache([profile_id], ["cookie"])
             assert hasattr(categories, "items")
@@ -60,9 +55,7 @@ def test_real_disposable_proxy_crud() -> None:
     port = os.getenv("ADSPOWER_TEST_PROXY_PORT")
     if not host or not port:
         if os.getenv("ADSPOWER_REQUIRE_PROXY_INTEGRATION") == "1":
-            pytest.fail(
-                "ADSPOWER_TEST_PROXY_HOST and ADSPOWER_TEST_PROXY_PORT are required by this integration gate"
-            )
+            pytest.fail("ADSPOWER_TEST_PROXY_HOST and ADSPOWER_TEST_PROXY_PORT are required by this integration gate")
         pytest.skip("ADSPOWER_TEST_PROXY_HOST and ADSPOWER_TEST_PROXY_PORT are required")
 
     proxy_id: str | None = None
@@ -79,10 +72,7 @@ def test_real_disposable_proxy_crud() -> None:
                 )
             )
             proxy_id = ids[0]
-            assert any(
-                item.proxy_id == proxy_id
-                for item in client.proxies.list(proxy_ids=[proxy_id]).items
-            )
+            assert any(item.proxy_id == proxy_id for item in client.proxies.list(proxy_ids=[proxy_id]).items)
             client.proxies.update(
                 proxy_id,
                 port=int(port),

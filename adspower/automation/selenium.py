@@ -86,6 +86,7 @@ class SeleniumAdapter(AbstractContextManager[Any]):
                     kwargs.setdefault("executable_path", self.connection.webdriver)
                 elif self.connection.selenium_debugger_address:
                     from urllib.parse import urlsplit
+
                     parsed = urlsplit(
                         self.connection.selenium_debugger_address
                         if "://" in self.connection.selenium_debugger_address

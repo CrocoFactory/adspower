@@ -45,10 +45,18 @@ def resolve_browser_connection(connection: BrowserConnection, config: AdsPowerCo
 
     if selenium is None and connection.debug_port is not None:
         selenium = f"{_format_host(target)}:{connection.debug_port}"
-    elif selenium is not None and config.browser_endpoint_policy == "rewrite_loopback_to_api_host" and not _loopback(target):
+    elif (
+        selenium is not None
+        and config.browser_endpoint_policy == "rewrite_loopback_to_api_host"
+        and not _loopback(target)
+    ):
         selenium = _rewrite_authority(selenium, target)
 
-    if playwright is not None and config.browser_endpoint_policy == "rewrite_loopback_to_api_host" and not _loopback(target):
+    if (
+        playwright is not None
+        and config.browser_endpoint_policy == "rewrite_loopback_to_api_host"
+        and not _loopback(target)
+    ):
         playwright = _rewrite_authority(playwright, target)
 
     if marionette_host is None and connection.marionette_port is not None and not _loopback(target):

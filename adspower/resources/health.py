@@ -19,5 +19,7 @@ class AsyncHealthResource:
         self._transport = transport
 
     async def status(self) -> JsonObject:
-        data = response_data(await self._transport.request(c.STATUS.method, c.STATUS.path), c.STATUS, allow_plain_object=True)
+        data = response_data(
+            await self._transport.request(c.STATUS.method, c.STATUS.path), c.STATUS, allow_plain_object=True
+        )
         return require_object(data, field="status")

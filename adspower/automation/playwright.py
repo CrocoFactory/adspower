@@ -19,16 +19,18 @@ def _connect_kwargs(
     extra: Mapping[str, Any] | None,
 ) -> dict[str, Any]:
     values: dict[str, Any] = {
-        "timeout": timeout, "slow_mo": slow_mo, "headers": headers,
-        "is_local": is_local, "no_defaults": no_defaults, "artifacts_dir": artifacts_dir,
+        "timeout": timeout,
+        "slow_mo": slow_mo,
+        "headers": headers,
+        "is_local": is_local,
+        "no_defaults": no_defaults,
+        "artifacts_dir": artifacts_dir,
     }
     result = {key: value for key, value in values.items() if value is not None}
     extras = dict(extra or {})
     collisions = set(result).intersection(extras)
     if collisions:
-        raise AdsPowerValidationError(
-            f"duplicate Playwright connection options: {', '.join(sorted(collisions))}"
-        )
+        raise AdsPowerValidationError(f"duplicate Playwright connection options: {', '.join(sorted(collisions))}")
     result.update(extras)
     return result
 
@@ -48,8 +50,13 @@ class PlaywrightAdapter(AbstractContextManager[Any]):
     ) -> None:
         self.connection = connection
         self.kwargs = _connect_kwargs(
-            timeout=timeout, slow_mo=slow_mo, headers=headers, is_local=is_local,
-            no_defaults=no_defaults, artifacts_dir=artifacts_dir, extra=connect_kwargs,
+            timeout=timeout,
+            slow_mo=slow_mo,
+            headers=headers,
+            is_local=is_local,
+            no_defaults=no_defaults,
+            artifacts_dir=artifacts_dir,
+            extra=connect_kwargs,
         )
         self._playwright: Any = None
         self.browser: Any = None
@@ -64,9 +71,7 @@ class PlaywrightAdapter(AbstractContextManager[Any]):
             if not self.connection.playwright_cdp_url:
                 raise AdsPowerProtocolError("AdsPower did not return a Playwright CDP endpoint")
             self._playwright = sync_playwright().start()
-            self.browser = self._playwright.chromium.connect_over_cdp(
-                self.connection.playwright_cdp_url, **self.kwargs
-            )
+            self.browser = self._playwright.chromium.connect_over_cdp(self.connection.playwright_cdp_url, **self.kwargs)
             return self.browser
         except BaseException:
             self.close(preserve_error=True)
@@ -112,8 +117,13 @@ class AsyncPlaywrightAdapter(AbstractAsyncContextManager[Any]):
     ) -> None:
         self.connection = connection
         self.kwargs = _connect_kwargs(
-            timeout=timeout, slow_mo=slow_mo, headers=headers, is_local=is_local,
-            no_defaults=no_defaults, artifacts_dir=artifacts_dir, extra=connect_kwargs,
+            timeout=timeout,
+            slow_mo=slow_mo,
+            headers=headers,
+            is_local=is_local,
+            no_defaults=no_defaults,
+            artifacts_dir=artifacts_dir,
+            extra=connect_kwargs,
         )
         self._playwright: Any = None
         self.browser: Any = None

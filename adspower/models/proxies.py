@@ -97,9 +97,7 @@ class Proxy:
 def parse_proxy(value: object) -> Proxy:
     data = require_object(value, field="proxy")
     related_raw = require_list(data.get("related_profile_no", []), field="related_profile_no")
-    related = tuple(
-        require_id_string(item, field="related_profile_no[]") for item in related_raw
-    )
+    related = tuple(require_id_string(item, field="related_profile_no[]") for item in related_raw)
     tags_raw = require_list(data.get("proxy_tags", []), field="proxy_tags")
     tags = tuple(require_object(item, field="proxy_tags[]") for item in tags_raw)
     port = first_present(data, "proxy_port", "port")

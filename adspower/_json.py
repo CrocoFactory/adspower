@@ -87,11 +87,7 @@ def optional_id_string(value: object, *, field: str) -> str | None:
 
 
 def collect_extra(data: Mapping[str, object], known: set[str]) -> JsonObject:
-    return {
-        key: require_json_value(value, field=key)
-        for key, value in data.items()
-        if key not in known
-    }
+    return {key: require_json_value(value, field=key) for key, value in data.items() if key not in known}
 
 
 def first_present(data: Mapping[str, object], *keys: str) -> object | None:
