@@ -3,14 +3,22 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Literal
 
-from typing_extensions import NotRequired, TypedDict, Unpack
+from typing_extensions import TypedDict, Unpack
 
 from .. import _contracts as c
-from .._json import JsonValue, first_present, require_list, require_object
+from .._json import JsonValue, first_present, require_object
 from ..errors import AdsPowerProtocolError
 from ..models import Page, Proxy
 from ..models.proxies import StoredProxyConfig, parse_proxy
-from ._common import AsyncTransportProtocol, SyncTransportProtocol, compact, id_list, parse_page, response_data, validate_page
+from ._common import (
+    AsyncTransportProtocol,
+    SyncTransportProtocol,
+    compact,
+    id_list,
+    parse_page,
+    response_data,
+    validate_page,
+)
 
 
 class ProxyUpdateOptions(TypedDict, total=False):

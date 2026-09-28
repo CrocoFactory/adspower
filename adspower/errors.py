@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 class AdsPowerError(Exception):
     """Base class for failures raised by the AdsPower SDK."""
 

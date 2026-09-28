@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from collections.abc import Mapping
+from dataclasses import dataclass, field
 
 from .._json import JsonValue, collect_extra, first_present, optional_string, require_id_string, require_object
 

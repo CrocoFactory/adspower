@@ -1,13 +1,18 @@
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from contextlib import AbstractAsyncContextManager, AbstractContextManager
 from types import TracebackType
 from typing import Any, Literal
 
 from .. import _contracts as c
 from .._json import JsonValue, require_list, require_object
-from ..automation import AsyncPlaywrightAdapter, PlaywrightAdapter, SeleniumAdapter, resolve_browser_connection
+from ..automation import (
+    AsyncPlaywrightAdapter,
+    PlaywrightAdapter,
+    SeleniumAdapter,
+    resolve_browser_connection,
+)
 from ..config import AdsPowerConfig
 from ..errors import AdsPowerValidationError
 from ..models import BrowserConnection, BrowserStatus, CloudBrowserStatus, RunningBrowser
@@ -17,10 +22,21 @@ from ..models.browsers import (
     parse_cloud_browser_status,
     parse_running_browser,
 )
-from ._common import AsyncTransportProtocol, SyncTransportProtocol, bool_wire, id_list, response_data, selector
+from ._common import (
+    AsyncTransportProtocol,
+    SyncTransportProtocol,
+    bool_wire,
+    id_list,
+    response_data,
+    selector,
+)
 
 
-def _launch_args(value: str | Sequence[str] | None, *, start_maximized: bool) -> str | list[JsonValue] | None:
+def _launch_args(
+    value: str | Sequence[str] | None,
+    *,
+    start_maximized: bool,
+) -> str | list[JsonValue] | None:
     if value is None:
         args: list[str] = []
     elif isinstance(value, str):
@@ -31,9 +47,17 @@ def _launch_args(value: str | Sequence[str] | None, *, start_maximized: bool) ->
         if isinstance(value, (bytes, bytearray)):
             raise AdsPowerValidationError("launch_args must be a string or sequence of strings")
         args = [str(item) for item in value]
-    if start_maximized and "--start-maximized" not in args and not any(item.startswith("--window-size=") for item in args):
+    if (
+        start_maximized
+        and "--start-maximized" not in args
+        and not any(item.startswith("--window-size=") for item in args)
+    ):
         args.append("--start-maximized")
-    return args or None
+    if not args:
+        return None
+    result: list[JsonValue] = []
+    result.extend(args)
+    return result
 
 
 def build_start_payload(
@@ -156,6 +180,8 @@ class BrowserSession(AbstractContextManager["BrowserSession"]):
 
 
 class AsyncBrowserSession(AbstractAsyncContextManager["AsyncBrowserSession"]):
+    """Async owner of one AdsPower browser process."""
+
     def __init__(
         self,
         *,
@@ -238,6 +264,8 @@ def _cloud(value: object) -> tuple[CloudBrowserStatus, ...]:
 
 
 class BrowsersResource:
+    """Synchronous browser process operations."""
+
     def __init__(self, transport: SyncTransportProtocol, config: AdsPowerConfig) -> None:
         self._transport = transport
         self.config = config
@@ -261,11 +289,19 @@ class BrowsersResource:
         timeout: float | None = None,
     ) -> BrowserSession:
         body = build_start_payload(
-            profile_id, profile_no, ip_tab=ip_tab, launch_args=launch_args,
-            headless=headless, last_opened_tabs=last_opened_tabs,
-            proxy_detection=proxy_detection, password_filling=password_filling,
-            password_saving=password_saving, delete_cache=delete_cache, cdp_mask=cdp_mask,
-            device_scale=device_scale, start_maximized=start_maximized,
+            profile_id,
+            profile_no,
+            ip_tab=ip_tab,
+            launch_args=launch_args,
+            headless=headless,
+            last_opened_tabs=last_opened_tabs,
+            proxy_detection=proxy_detection,
+            password_filling=password_filling,
+            password_saving=password_saving,
+            delete_cache=delete_cache,
+            cdp_mask=cdp_mask,
+            device_scale=device_scale,
+            start_maximized=start_maximized,
         )
         response = self._transport.request(
             c.PROFILE_START.method,
@@ -287,22 +323,42 @@ class BrowsersResource:
     session = start
 
     def stop(self, profile_id: str | None = None, *, profile_no: str | None = None) -> None:
-        response_data(self._transport.request(c.PROFILE_STOP.method, c.PROFILE_STOP.path, json=selector(profile_id, profile_no)), c.PROFILE_STOP)
+        response_data(
+            self._transport.request(
+                c.PROFILE_STOP.method,
+                c.PROFILE_STOP.path,
+                json=selector(profile_id, profile_no),
+            ),
+            c.PROFILE_STOP,
+        )
 
     def stop_all(self) -> None:
-        response_data(self._transport.request(c.PROFILE_STOP_ALL.method, c.PROFILE_STOP_ALL.path, json={}), c.PROFILE_STOP_ALL)
+        response_data(
+            self._transport.request(c.PROFILE_STOP_ALL.method, c.PROFILE_STOP_ALL.path, json={}),
+            c.PROFILE_STOP_ALL,
+        )
 
     def status(self, profile_id: str | None = None, *, profile_no: str | None = None) -> BrowserStatus:
         payload = selector(profile_id, profile_no)
         params = {key: str(value) for key, value in payload.items()}
-        data = response_data(self._transport.request(c.PROFILE_ACTIVE.method, c.PROFILE_ACTIVE.path, params=params), c.PROFILE_ACTIVE)
+        data = response_data(
+            self._transport.request(c.PROFILE_ACTIVE.method, c.PROFILE_ACTIVE.path, params=params),
+            c.PROFILE_ACTIVE,
+        )
         parsed = parse_browser_status(data)
         if parsed.connection is None:
             return parsed
-        return BrowserStatus(parsed.status, resolve_browser_connection(parsed.connection, self.config), parsed.extra)
+        return BrowserStatus(
+            parsed.status,
+            resolve_browser_connection(parsed.connection, self.config),
+            parsed.extra,
+        )
 
     def list_opened(self) -> tuple[RunningBrowser, ...]:
-        data = response_data(self._transport.request(c.PROFILE_LOCAL_ACTIVE.method, c.PROFILE_LOCAL_ACTIVE.path), c.PROFILE_LOCAL_ACTIVE)
+        data = response_data(
+            self._transport.request(c.PROFILE_LOCAL_ACTIVE.method, c.PROFILE_LOCAL_ACTIVE.path),
+            c.PROFILE_LOCAL_ACTIVE,
+        )
         return _running(data, self.config)
 
     def cloud_status(self, profile_ids: Sequence[str]) -> tuple[CloudBrowserStatus, ...]:
@@ -319,6 +375,8 @@ class BrowsersResource:
 
 
 class AsyncBrowsersResource:
+    """Asynchronous browser process operations."""
+
     def __init__(self, transport: AsyncTransportProtocol, config: AdsPowerConfig) -> None:
         self._transport = transport
         self.config = config
@@ -342,11 +400,19 @@ class AsyncBrowsersResource:
         timeout: float | None = None,
     ) -> AsyncBrowserSession:
         body = build_start_payload(
-            profile_id, profile_no, ip_tab=ip_tab, launch_args=launch_args,
-            headless=headless, last_opened_tabs=last_opened_tabs,
-            proxy_detection=proxy_detection, password_filling=password_filling,
-            password_saving=password_saving, delete_cache=delete_cache, cdp_mask=cdp_mask,
-            device_scale=device_scale, start_maximized=start_maximized,
+            profile_id,
+            profile_no,
+            ip_tab=ip_tab,
+            launch_args=launch_args,
+            headless=headless,
+            last_opened_tabs=last_opened_tabs,
+            proxy_detection=proxy_detection,
+            password_filling=password_filling,
+            password_saving=password_saving,
+            delete_cache=delete_cache,
+            cdp_mask=cdp_mask,
+            device_scale=device_scale,
+            start_maximized=start_maximized,
         )
         response = await self._transport.request(
             c.PROFILE_START.method,
@@ -368,22 +434,47 @@ class AsyncBrowsersResource:
     session = start
 
     async def stop(self, profile_id: str | None = None, *, profile_no: str | None = None) -> None:
-        response_data(await self._transport.request(c.PROFILE_STOP.method, c.PROFILE_STOP.path, json=selector(profile_id, profile_no)), c.PROFILE_STOP)
+        response_data(
+            await self._transport.request(
+                c.PROFILE_STOP.method,
+                c.PROFILE_STOP.path,
+                json=selector(profile_id, profile_no),
+            ),
+            c.PROFILE_STOP,
+        )
 
     async def stop_all(self) -> None:
-        response_data(await self._transport.request(c.PROFILE_STOP_ALL.method, c.PROFILE_STOP_ALL.path, json={}), c.PROFILE_STOP_ALL)
+        response_data(
+            await self._transport.request(c.PROFILE_STOP_ALL.method, c.PROFILE_STOP_ALL.path, json={}),
+            c.PROFILE_STOP_ALL,
+        )
 
-    async def status(self, profile_id: str | None = None, *, profile_no: str | None = None) -> BrowserStatus:
+    async def status(
+        self,
+        profile_id: str | None = None,
+        *,
+        profile_no: str | None = None,
+    ) -> BrowserStatus:
         payload = selector(profile_id, profile_no)
         params = {key: str(value) for key, value in payload.items()}
-        data = response_data(await self._transport.request(c.PROFILE_ACTIVE.method, c.PROFILE_ACTIVE.path, params=params), c.PROFILE_ACTIVE)
+        data = response_data(
+            await self._transport.request(c.PROFILE_ACTIVE.method, c.PROFILE_ACTIVE.path, params=params),
+            c.PROFILE_ACTIVE,
+        )
         parsed = parse_browser_status(data)
         if parsed.connection is None:
             return parsed
-        return BrowserStatus(parsed.status, resolve_browser_connection(parsed.connection, self.config), parsed.extra)
+        return BrowserStatus(
+            parsed.status,
+            resolve_browser_connection(parsed.connection, self.config),
+            parsed.extra,
+        )
 
     async def list_opened(self) -> tuple[RunningBrowser, ...]:
-        data = response_data(await self._transport.request(c.PROFILE_LOCAL_ACTIVE.method, c.PROFILE_LOCAL_ACTIVE.path), c.PROFILE_LOCAL_ACTIVE)
+        data = response_data(
+            await self._transport.request(c.PROFILE_LOCAL_ACTIVE.method, c.PROFILE_LOCAL_ACTIVE.path),
+            c.PROFILE_LOCAL_ACTIVE,
+        )
         return _running(data, self.config)
 
     async def cloud_status(self, profile_ids: Sequence[str]) -> tuple[CloudBrowserStatus, ...]:

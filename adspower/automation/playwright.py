@@ -58,7 +58,7 @@ class PlaywrightAdapter(AbstractContextManager[Any]):
     def __enter__(self) -> Any:
         try:
             try:
-                from playwright.sync_api import sync_playwright
+                from playwright.sync_api import sync_playwright  # pyright: ignore[reportMissingImports]
             except ImportError as exc:
                 raise ImportError("Install Playwright support with: pip install 'adspower[playwright]'") from exc
             if not self.connection.playwright_cdp_url:
@@ -122,7 +122,7 @@ class AsyncPlaywrightAdapter(AbstractAsyncContextManager[Any]):
     async def __aenter__(self) -> Any:
         try:
             try:
-                from playwright.async_api import async_playwright
+                from playwright.async_api import async_playwright  # pyright: ignore[reportMissingImports]
             except ImportError as exc:
                 raise ImportError("Install Playwright support with: pip install 'adspower[playwright]'") from exc
             if not self.connection.playwright_cdp_url:

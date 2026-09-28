@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Self
 
 import httpx
+from typing_extensions import Self
 
 from .config import AdsPowerConfig, BrowserEndpointPolicy
 from .errors import AdsPowerValidationError
@@ -73,6 +73,7 @@ class AdsPowerClient:
         self.raw = RawResource(self._transport)
 
     def close(self) -> None:
+        """Close the underlying HTTP client."""
         self._transport.close()
 
     def __enter__(self) -> Self:

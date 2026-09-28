@@ -69,14 +69,5 @@ pythonVersion = "3.10"
 typeCheckingMode = "standard"
 
 [tool.coverage.run]
-source = [
-    "adspower.api",
-    "adspower.async_client",
-    "adspower.automation",
-    "adspower.client",
-    "adspower.config",
-    "adspower.models",
-    "adspower.rate_limit",
-    "adspower.transport",
-    "adspower.security",
-]
+source = ["adspower"]
+branch = true

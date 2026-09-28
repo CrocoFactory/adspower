@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Self
 
 import httpx
+from typing_extensions import Self
 
 from .config import AdsPowerConfig, BrowserEndpointPolicy
 from .errors import AdsPowerValidationError
@@ -24,7 +24,7 @@ from .transport import AsyncTransport
 
 
 class AsyncAdsPowerClient:
-    """Asynchronous AdsPower Local API client with the same namespaces as the sync client."""
+    """Asynchronous AdsPower Local API client with sync-equivalent namespaces."""
 
     def __init__(
         self,
@@ -73,6 +73,7 @@ class AsyncAdsPowerClient:
         self.raw = AsyncRawResource(self._transport)
 
     async def close(self) -> None:
+        """Close the underlying async HTTP client."""
         await self._transport.close()
 
     async def __aenter__(self) -> Self:

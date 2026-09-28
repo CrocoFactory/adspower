@@ -7,7 +7,7 @@ from .kernels import AsyncKernelsResource, KernelsResource
 from .profiles import AsyncProfilesResource, ProfilesResource
 from .proxies import AsyncProxiesResource, ProxiesResource
 from .raw import AsyncRawResource, RawResource
-from .tags import AsyncTagsResource, TagCreate, TagUpdate, TagsResource
+from .tags import AsyncTagsResource, TagCreate, TagsResource, TagUpdate
 
 __all__ = [
     "AppResource", "AsyncAppResource", "AsyncBrowserSession", "AsyncBrowsersResource",

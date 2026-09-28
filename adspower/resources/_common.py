@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Callable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Protocol, TypeVar
 
 import httpx
@@ -57,8 +57,13 @@ def id_list(
 ) -> list[JsonValue]:
     if isinstance(values, (str, bytes)):
         raise AdsPowerValidationError(f"{name} must be a sequence, not a string")
-    result = [str(value) for value in values if str(value)]
-    if not result or len(result) != len(values):
+    result: list[JsonValue] = []
+    for value in values:
+        string_value = str(value)
+        if not string_value:
+            raise AdsPowerValidationError(f"{name} must contain non-empty ids")
+        result.append(string_value)
+    if not result:
         raise AdsPowerValidationError(f"{name} must contain non-empty ids")
     if maximum is not None and len(result) > maximum:
         raise AdsPowerValidationError(f"{name} must contain at most {maximum} ids")

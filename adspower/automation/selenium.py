@@ -45,13 +45,13 @@ class SeleniumAdapter(AbstractContextManager[Any]):
                 raise AdsPowerValidationError("service and service_kwargs are mutually exclusive")
             try:
                 if self.browser == "firefox":
-                    from selenium.webdriver.firefox.options import Options
-                    from selenium.webdriver.firefox.service import Service
-                    from selenium.webdriver.firefox.webdriver import WebDriver
+                    from selenium.webdriver.firefox.options import Options  # pyright: ignore[reportMissingImports]
+                    from selenium.webdriver.firefox.service import Service  # pyright: ignore[reportMissingImports]
+                    from selenium.webdriver.firefox.webdriver import WebDriver  # pyright: ignore[reportMissingImports]
                 else:
-                    from selenium.webdriver.chrome.options import Options
-                    from selenium.webdriver.chrome.service import Service
-                    from selenium.webdriver.chrome.webdriver import WebDriver
+                    from selenium.webdriver.chrome.options import Options  # pyright: ignore[reportMissingImports]
+                    from selenium.webdriver.chrome.service import Service  # pyright: ignore[reportMissingImports]
+                    from selenium.webdriver.chrome.webdriver import WebDriver  # pyright: ignore[reportMissingImports]
             except ImportError as exc:
                 raise ImportError("Install Selenium support with: pip install 'adspower[selenium]'") from exc
 

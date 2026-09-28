@@ -3,10 +3,10 @@ from __future__ import annotations
 from collections.abc import AsyncIterator, Iterator, Sequence
 from typing import Literal
 
-from typing_extensions import NotRequired, TypedDict, Unpack
+from typing_extensions import TypedDict, Unpack
 
 from .. import _contracts as c
-from .._json import JsonObject, JsonValue, require_list, require_object
+from .._json import JsonObject, JsonValue, require_json_value, require_list, require_object
 from ..errors import AdsPowerNotFoundError, AdsPowerProtocolError, AdsPowerValidationError
 from ..models import CreatedProfile, FingerprintConfig, InlineProxyConfig, Page, PlatformAccount, Profile
 from ..models.profiles import parse_created_profile, parse_profile
@@ -144,7 +144,7 @@ def _cookies(value: object) -> tuple[JsonObject, ...]:
 def _user_agents(value: object) -> JsonValue:
     if value is None:
         raise AdsPowerProtocolError("user-agent response is missing data")
-    return value  # already protocol-validated JSON
+    return require_json_value(value, field="user-agent")
 
 
 class ProfilesResource:
@@ -199,8 +199,12 @@ class ProfilesResource:
         return parse_page(data, item_keys=("list", "profiles", "items"), parser=parse_profile, requested_page=page, requested_page_size=page_size)
 
     def iter_all(self, **kwargs: object) -> Iterator[Profile]:
-        page_no = int(kwargs.pop("page", 1))
-        page_size = int(kwargs.pop("page_size", 200))
+        page_value = kwargs.pop("page", 1)
+        page_size_value = kwargs.pop("page_size", 200)
+        if not isinstance(page_value, int) or not isinstance(page_size_value, int):
+            raise AdsPowerValidationError("page and page_size must be integers")
+        page_no = page_value
+        page_size = page_size_value
         while True:
             current = self.list(page=page_no, page_size=page_size, **kwargs)  # type: ignore[arg-type]
             yield from current.items
@@ -246,7 +250,11 @@ class ProfilesResource:
             raise AdsPowerValidationError("provide exactly one of profile_ids or profile_nos")
         values = profile_ids if profile_ids is not None else profile_nos
         assert values is not None
-        body = {"profile_id" if profile_ids is not None else "profile_no": id_list(values, name="profiles", maximum=10)}
+        body: JsonObject = {
+            "profile_id" if profile_ids is not None else "profile_no": id_list(
+                values, name="profiles", maximum=10
+            )
+        }
         data = response_data(self._transport.request(c.PROFILE_UA.method, c.PROFILE_UA.path, json=body), c.PROFILE_UA)
         return _user_agents(data)
 
@@ -260,7 +268,11 @@ class ProfilesResource:
             raise AdsPowerValidationError("provide exactly one of profile_ids or profile_nos")
         values = profile_ids if profile_ids is not None else profile_nos
         assert values is not None
-        body = {"profile_id" if profile_ids is not None else "profile_no": id_list(values, name="profiles", maximum=10)}
+        body: JsonObject = {
+            "profile_id" if profile_ids is not None else "profile_no": id_list(
+                values, name="profiles", maximum=10
+            )
+        }
         return response_data(self._transport.request(c.PROFILE_NEW_FINGERPRINT.method, c.PROFILE_NEW_FINGERPRINT.path, json=body), c.PROFILE_NEW_FINGERPRINT)
 
     def delete_cache(self, profile_ids: Sequence[str], cache_types: Sequence[CacheType]) -> None:
@@ -310,8 +322,12 @@ class AsyncProfilesResource:
         tags_filter = kwargs.pop("tags_filter", None)
         name = kwargs.pop("name", None)
         name_filter = kwargs.pop("name_filter", None)
-        page = int(kwargs.pop("page", 1))
-        page_size = int(kwargs.pop("page_size", 200))
+        page_value = kwargs.pop("page", 1)
+        page_size_value = kwargs.pop("page_size", 200)
+        if not isinstance(page_value, int) or not isinstance(page_size_value, int):
+            raise AdsPowerValidationError("page and page_size must be integers")
+        page = page_value
+        page_size = page_size_value
         if kwargs:
             raise AdsPowerValidationError(f"unknown profile list arguments: {', '.join(kwargs)}")
         validate_page(page, page_size, maximum=200)
@@ -338,8 +354,12 @@ class AsyncProfilesResource:
         return parse_page(data, item_keys=("list", "profiles", "items"), parser=parse_profile, requested_page=page, requested_page_size=page_size)
 
     async def iter_all(self, **kwargs: object) -> AsyncIterator[Profile]:
-        page_no = int(kwargs.pop("page", 1))
-        page_size = int(kwargs.pop("page_size", 200))
+        page_value = kwargs.pop("page", 1)
+        page_size_value = kwargs.pop("page_size", 200)
+        if not isinstance(page_value, int) or not isinstance(page_size_value, int):
+            raise AdsPowerValidationError("page and page_size must be integers")
+        page_no = page_value
+        page_size = page_size_value
         while True:
             current = await self.list(page=page_no, page_size=page_size, **kwargs)
             for item in current.items:
@@ -381,7 +401,11 @@ class AsyncProfilesResource:
             raise AdsPowerValidationError("provide exactly one of profile_ids or profile_nos")
         values = profile_ids if profile_ids is not None else profile_nos
         assert values is not None
-        body = {"profile_id" if profile_ids is not None else "profile_no": id_list(values, name="profiles", maximum=10)}
+        body: JsonObject = {
+            "profile_id" if profile_ids is not None else "profile_no": id_list(
+                values, name="profiles", maximum=10
+            )
+        }
         data = response_data(await self._transport.request(c.PROFILE_UA.method, c.PROFILE_UA.path, json=body), c.PROFILE_UA)
         return _user_agents(data)
 
@@ -390,7 +414,11 @@ class AsyncProfilesResource:
             raise AdsPowerValidationError("provide exactly one of profile_ids or profile_nos")
         values = profile_ids if profile_ids is not None else profile_nos
         assert values is not None
-        body = {"profile_id" if profile_ids is not None else "profile_no": id_list(values, name="profiles", maximum=10)}
+        body: JsonObject = {
+            "profile_id" if profile_ids is not None else "profile_no": id_list(
+                values, name="profiles", maximum=10
+            )
+        }
         return response_data(await self._transport.request(c.PROFILE_NEW_FINGERPRINT.method, c.PROFILE_NEW_FINGERPRINT.path, json=body), c.PROFILE_NEW_FINGERPRINT)
 
     async def delete_cache(self, profile_ids: Sequence[str], cache_types: Sequence[CacheType]) -> None:

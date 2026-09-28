@@ -41,10 +41,9 @@ class SyncTransport:
     ) -> httpx.Response:
         self._limiter.acquire(method, path)
         try:
-            kwargs: dict[str, object] = {"params": params, "json": json}
-            if timeout is not None:
-                kwargs["timeout"] = timeout
-            return self._client.request(method, path, **kwargs)
+            if timeout is None:
+                return self._client.request(method, path, params=params, json=json)
+            return self._client.request(method, path, params=params, json=json, timeout=timeout)
         except httpx.TimeoutException as exc:
             raise AdsPowerTimeoutError(
                 f"AdsPower request timed out ({method.upper()} {path})",
