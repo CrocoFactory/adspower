@@ -19,9 +19,6 @@ Docker and private remote AdsPower deployments. Remote Selenium attachment
 requires a reachable debugger `/json/version` endpoint or an explicitly
 configured matching driver service.
 
-> Version 3 is a breaking release. The old `adspower.sync_api` and
-> `adspower.async_api` packages were removed; use the clients shown below.
-
 ## Features
 
 - Sync and async profile CRUD through AdsPower API V2.
