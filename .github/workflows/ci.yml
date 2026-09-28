@@ -56,9 +56,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.14"
-      - run: pip install poetry pyright
+      - run: pip install poetry
       - run: poetry install --all-extras
-      - run: pyright adspower
+      - run: poetry run pyright adspower
 
   package:
     runs-on: ubuntu-latest
