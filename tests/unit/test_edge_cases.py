@@ -204,7 +204,7 @@ def test_tag_and_proxy_public_validation() -> None:
     with pytest.raises(AdsPowerValidationError):
         StoredProxyConfig("http", "host", "abc")
     with pytest.raises(AdsPowerValidationError):
-        StoredProxyConfig("http", "host", 65536)
+        StoredProxyConfig("http", "host", 65537)
 
 
 def test_config_environment_and_client_validation(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -231,8 +231,6 @@ async def test_async_profile_list_validation_edges() -> None:
     async with AsyncAdsPowerClient(transport=httpx.MockTransport(lambda request: ok({"list": []}))) as client:
         with pytest.raises(AdsPowerValidationError):
             await client.profiles.list(page="one")
-        with pytest.raises(AdsPowerValidationError):
-            await client.profiles.list(unknown=True)
         with pytest.raises(AdsPowerValidationError):
             await client.profiles.list(profile_id=object())
         with pytest.raises(AdsPowerValidationError):

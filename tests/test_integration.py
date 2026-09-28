@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import os
 import threading
 import uuid
@@ -141,3 +142,58 @@ async def test_real_async_playwright_attach(test_page_url: str) -> None:
                 page = context.pages[0] if context.pages else await context.new_page()
                 await page.goto(test_page_url)
                 assert await page.locator("#message").inner_text() == "hello"
+
+
+def _high_impact_enabled() -> None:
+    _integration_enabled()
+    if os.getenv("ADSPOWER_HIGH_IMPACT_INTEGRATION") != "1":
+        if os.getenv("ADSPOWER_REQUIRE_HIGH_IMPACT") == "1":
+            pytest.fail("ADSPOWER_HIGH_IMPACT_INTEGRATION=1 is required by this release gate")
+        pytest.skip("Set ADSPOWER_HIGH_IMPACT_INTEGRATION=1 on a dedicated test installation")
+
+
+@pytest.mark.asyncio
+async def test_real_async_playwright_cancellation_cleanup(test_page_url: str) -> None:
+    profile_id = _integration_profile_id()
+    async with AsyncAdsPowerClient() as client:
+        with pytest.raises(asyncio.CancelledError):
+            async with await client.browsers.session(profile_id) as session:
+                async with session.playwright() as browser:
+                    context = browser.contexts[0]
+                    page = context.pages[0] if context.pages else await context.new_page()
+                    await page.goto(test_page_url)
+                    asyncio.current_task().cancel()  # type: ignore[union-attr]
+                    await asyncio.sleep(0)
+
+        status = await client.browsers.status(profile_id)
+        assert not status.active
+
+
+def test_real_high_impact_profile_operations() -> None:
+    _high_impact_enabled()
+    profile_id = _integration_profile_id()
+    receiver = os.getenv("ADSPOWER_TEST_SHARE_RECEIVER")
+    if not receiver:
+        pytest.fail("ADSPOWER_TEST_SHARE_RECEIVER is required for the high-impact release gate")
+
+    with AdsPowerClient() as client:
+        client.profiles.new_fingerprint(profile_ids=[profile_id])
+        client.profiles.share([profile_id], receiver)
+        client.browsers.stop_all()
+
+
+def test_real_high_impact_kernel_download() -> None:
+    _high_impact_enabled()
+    kernel_type = os.getenv("ADSPOWER_TEST_KERNEL_TYPE", "Chrome")
+    kernel_version = os.getenv("ADSPOWER_TEST_KERNEL_VERSION")
+    if not kernel_version:
+        pytest.fail("ADSPOWER_TEST_KERNEL_VERSION is required for the high-impact release gate")
+
+    with AdsPowerClient() as client:
+        client.kernels.download(kernel_type, kernel_version)  # type: ignore[arg-type]
+
+
+def test_real_high_impact_patch_update() -> None:
+    _high_impact_enabled()
+    with AdsPowerClient() as client:
+        client.app.update_patch(os.getenv("ADSPOWER_TEST_PATCH_CHANNEL", "stable"))  # type: ignore[arg-type]

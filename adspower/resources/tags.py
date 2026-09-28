@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import AsyncIterator, Iterator, Sequence
 from dataclasses import dataclass
 from typing import Literal
 
@@ -65,6 +65,20 @@ class TagsResource:
             requested_page_size=page_size,
         )
 
+    def iter_all(
+        self, *, ids: Sequence[str] | None = None, page: int = 1, page_size: int = 50
+    ) -> Iterator[BrowserTag]:
+        """Iterate browser tags across all pages."""
+        while True:
+            current = self.list(ids=ids, page=page, page_size=page_size)
+            yield from current.items
+            if current.total_pages is not None:
+                if page >= current.total_pages:
+                    break
+            elif len(current.items) < page_size:
+                break
+            page += 1
+
     def create(self, tags: Sequence[TagCreate]) -> JsonValue | None:
         if not tags:
             raise AdsPowerValidationError("tags must not be empty")
@@ -111,6 +125,21 @@ class AsyncTagsResource:
             requested_page=page,
             requested_page_size=page_size,
         )
+
+    async def iter_all(
+        self, *, ids: Sequence[str] | None = None, page: int = 1, page_size: int = 50
+    ) -> AsyncIterator[BrowserTag]:
+        """Iterate browser tags across all pages."""
+        while True:
+            current = await self.list(ids=ids, page=page, page_size=page_size)
+            for item in current.items:
+                yield item
+            if current.total_pages is not None:
+                if page >= current.total_pages:
+                    break
+            elif len(current.items) < page_size:
+                break
+            page += 1
 
     async def create(self, tags: Sequence[TagCreate]) -> JsonValue | None:
         if not tags:

@@ -75,10 +75,23 @@ class MacAddressConfig:
         return result
 
 
+_CHROME_KERNELS = frozenset({
+    "92", "99", "102", "105", "108", "111", "114", "115", "116", "117", "118", "119", "120", "121",
+    "122", "123", "124", "125", "126", "127", "128", "129", "130", "131", "132", "133", "134", "135",
+    "136", "137", "138", "139", "140", "141", "142", "143", "144", "ua_auto",
+})
+_FIREFOX_KERNELS = frozenset({"100", "107", "114", "120", "123", "126", "129", "132", "135", "138", "141", "144", "ua_auto"})
+
+
 @dataclass(frozen=True, slots=True)
 class BrowserKernelConfig:
     kernel_type: Literal["chrome", "firefox"]
-    version: str
+    version: str = "ua_auto"
+
+    def __post_init__(self) -> None:
+        supported = _CHROME_KERNELS if self.kernel_type == "chrome" else _FIREFOX_KERNELS
+        if self.version not in supported:
+            raise AdsPowerValidationError(f"unsupported {self.kernel_type} kernel version: {self.version}")
 
     def to_api(self) -> JsonObject:
         return {"type": self.kernel_type, "version": self.version}
@@ -98,9 +111,23 @@ class RandomUserAgentConfig:
         return result
 
 
+ProxySoft = Literal[
+    "brightdata",
+    "brightauto",
+    "oxylabsauto",
+    "922S5auto",
+    "ipfoxyauto",
+    "922S5auth",
+    "kookauto",
+    "ssh",
+    "other",
+    "no_proxy",
+]
+
+
 @dataclass(frozen=True, slots=True)
 class InlineProxyConfig:
-    proxy_soft: str
+    proxy_soft: ProxySoft
     proxy_type: Literal["http", "https", "socks5", "no_proxy"] | None = None
     host: str | None = None
     port: int | str | None = None
@@ -112,6 +139,15 @@ class InlineProxyConfig:
     @classmethod
     def no_proxy(cls) -> "InlineProxyConfig":
         return cls(proxy_soft="no_proxy")
+
+    def __post_init__(self) -> None:
+        if self.port is not None:
+            try:
+                port = int(self.port)
+            except (TypeError, ValueError) as exc:
+                raise AdsPowerValidationError("proxy port must be an integer") from exc
+            if not 0 <= port <= 65536:
+                raise AdsPowerValidationError("proxy port must be between 0 and 65536")
 
     def to_api(self) -> JsonObject:
         result: JsonObject = {"proxy_soft": self.proxy_soft}
@@ -134,6 +170,10 @@ class PlatformAccount:
     login_user: str
     password: str | None = None
     fakey: str | None = None
+
+    def __post_init__(self) -> None:
+        if not self.domain_name or not self.login_user:
+            raise AdsPowerValidationError("platform account requires domain_name and login_user")
 
     def to_api(self) -> JsonObject:
         result: JsonObject = {"domain_name": self.domain_name, "login_user": self.login_user}
@@ -200,6 +240,8 @@ class FingerprintConfig:
             raise AdsPowerValidationError("custom device name mode requires device_name")
         if self.tls_enabled and not self.tls:
             raise AdsPowerValidationError("tls_enabled requires tls cipher list")
+        if self.tls_enabled and self.browser_kernel is not None and self.browser_kernel.kernel_type != "chrome":
+            raise AdsPowerValidationError("custom TLS is supported only with the Chrome kernel")
 
     def to_api(self) -> JsonObject:
         result: JsonObject = {}

@@ -1,151 +1,67 @@
 # Profiles and browser sessions
 
-**Purpose**: Explain V2 profile operations and the separation between persistent profiles and running browsers.
-
 ## Profiles
 
-`client.profiles` uses AdsPower API V2. A profile is persistent data; it does not
-own a global client or an automation runtime.
+Creation returns identifiers, not a synthetic full snapshot:
 
 ```python
-profile = client.profiles.create(name="example", group_id="0")
-profile = client.profiles.get(profile.id)
-profiles = client.profiles.list(group_id="0")
-client.profiles.update(profile.id, name="renamed")
-profile = client.profiles.update(profile.id, name="renamed-again", refresh=True)
-client.profiles.delete(profile.id)
+created = client.profiles.create(name="example", group_id="0")
+profile = client.profiles.get(created.profile_id)
+client.profiles.update(profile.profile_id, name="renamed")
+client.profiles.delete(profile.profile_id)
 ```
 
-`update()` has a deterministic contract: it returns `None` by default, even if
-a server version happens to include profile fields in the update response.
-Use `refresh=True` to perform one documented follow-up query and return the
-fresh `Profile`.
+`update()` returns `None`. Fetch explicitly with `get()` when a fresh
+snapshot is required; mutations do not hide follow-up network calls.
 
-The SDK translates `page_size` to AdsPower V2's `limit` field and sends profile
-IDs as arrays for V2 list and delete calls, as required by the current API.
-
-Create returns the profile directly from the server response. It does not issue a
-second list request just to recover an identifier.
-
-Known response fields are normalized:
-
-- `profile_id`, `user_id`, or `id` becomes `Profile.id`;
-- `profile_no` or `serial_number` becomes `Profile.profile_no`;
-- `Profile.number` remains a compatibility property during the v3 transition;
-- `group_id` is represented as a string;
-- `user_proxy_config` remains available as a dictionary;
-- unrecognized fields are stored in `Profile.extra`.
-
-This tolerant model prevents newly added AdsPower fields from breaking the SDK.
-
-## Request schemas
-
-Additional keyword arguments are passed through to the V2 request. `None` values
-are omitted while false values, empty lists, and zero values are retained.
-When omitted during creation, the SDK supplies AdsPower's documented no-proxy
-configuration and a minimal valid fingerprint configuration. Explicit values
-always take precedence.
+Profile listing uses server-side name/tag filters and preserves pagination:
 
 ```python
-profile = client.profiles.create(
-    name="example",
-    group_id="0",
-    platform="facebook.com",
-    tabs=["https://example.com"],
-    user_proxy_config={"proxy_soft": "other"},
-    fingerprint_config={"screen_resolution": "1366_768"},
+page = client.profiles.list(
+    name="shop",
+    name_filter="include",
+    tag_ids=["tag-id"],
+    tags_filter="include",
+    page_size=200,
 )
+for profile in client.profiles.iter_all(group_id="0"):
+    print(profile.profile_id, profile.profile_no)
 ```
 
-Proxy-provider fields accept strings. This keeps the runtime forward-compatible
-when AdsPower introduces a provider that the SDK does not know yet.
-Only canonical Local API V2 proxy keys are accepted in `user_proxy_config`, such
-as `proxy_soft`, `proxy_type`, `proxy_host`, `proxy_port`, `proxy_user`, and
-`proxy_password`. Removed v2 aliases are rejected instead of translated.
+Known response fields are parsed strictly. Unknown fields remain available via
+typed `extra` metadata. Canonical names are `profile_id` and `profile_no`;
+there is no `id`, `number`, or intermediate-v3 compatibility property.
 
-Profile creation accepts either `proxyid` or `user_proxy_config`; when neither
-is supplied the SDK sends the documented no-proxy default. `fingerprint_config=None`
-has the same effect as omission and receives the minimal documented default.
+Creation injects only the first-party no-proxy value when neither `proxyid`
+nor `user_proxy_config` is supplied. Fingerprint configuration is omitted
+unless the caller supplies it.
 
-Batch and account operations are available in both clients:
+## Groups, categories, proxies and tags
 
-```python
-client.profiles.delete_many(["a", "b"])
-client.profiles.move(["a", "b"], group_id="123")
-client.profiles.delete_cache(["a"], ["local_storage", "indexeddb"])
-cookies = client.profiles.cookies(profile_no="42")
-matches = client.profiles.find_all_by_name("example", max_pages=5)
-client.profiles.share(["a"], "recipient@example.com", content=["name", "tabs"])
-```
-
-Cookie JSON is normalized to `list[dict]`. Credentials, cookies, and proxy
-passwords are redacted from model representations.
-
-## Groups
-
-AdsPower group operations remain on their established V1 endpoints because the
-profile V2 contract does not provide equivalent group endpoints.
-
-```python
-group = client.groups.create("automation", remark="managed by SDK")
-groups = client.groups.list(name="automation")
-```
-
-Groups remain a V1 endpoint because AdsPower does not expose an equivalent V2
-group contract; this does not affect V2 profile or browser operations.
+Paginated resources return `Page[T]` and provide `iter_all()` where the
+underlying endpoint is paginated. Current first-party limits are enforced:
+profiles 200/page, groups 100/page, categories 100/page, proxies 200/page and
+tags 200/page.
 
 ## Browser sessions
 
-A browser session exists only after a profile is started:
-
 ```python
-session = client.browsers.start(profile.id, headless=False)
-print(session.connection.selenium)
-print(session.connection.playwright_cdp)
-session.stop()
-
-session = client.browsers.start(profile_no="42")
-status = client.browsers.status(profile_no="42")
-active = client.browsers.list_active()
+with client.browsers.session(profile_id=profile.profile_id) as session:
+    print(session.connection.selenium_debugger_address)
+    print(session.connection.playwright_cdp_url)
+    with session.selenium() as driver:
+        driver.get("https://example.com")
 ```
 
-`BrowserConnection` parses:
+The outer `BrowserSession` owns AdsPower start/stop. Selenium and Playwright
+adapters own only attachment and their own runtime cleanup. Adapter cleanup
+happens before Local API stop, cleanup errors do not mask an existing user or
+control-flow exception, and native automation runtime exceptions remain native.
 
-- Selenium debugger address;
-- exact Playwright/Puppeteer CDP websocket;
-- debug port;
-- AdsPower-provided WebDriver path;
-- remote Marionette host for Firefox attachment;
-- future fields in `extra`.
-
-Calling `stop()` more than once on the same session is safe and sends one stop
-request. Automation context managers can stop automatically on exit.
-
-## Async parity
-
-The async API has the same service layout and shared parsers:
+Async exposes the same resource names and request semantics:
 
 ```python
-profile = await client.profiles.create(name="example", group_id="0")
-profiles = await client.profiles.list(group_id="0")
-session = await client.browsers.start(profile.id)
-await session.stop()
+page = await client.profiles.list(name="shop")
+async for profile in client.profiles.iter_all(group_id="0"):
+    ...
 ```
-
-Only I/O orchestration differs. Request paths, serializers, models, response
-handling, and exception mapping are shared with the sync API.
-
-## References
-
-- `adspower/models.py`
-- `adspower/api.py`
-- `adspower/client.py`
-- `adspower/async_client.py`
-
-
-## Name search
-
-Query Profile V2 does not currently document `name` or `name_filter` request
-fields. `find_by_name()` and `find_all_by_name()` therefore paginate the
-documented list endpoint and perform exact name matching client-side. Optional
-`group_id` filtering remains server-side.

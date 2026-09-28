@@ -1,135 +1,61 @@
 # Configuration and networking
 
-**Purpose**: Configure the SDK safely for local, container, and private remote use.
-
-## Endpoint resolution
-
-The client resolves its endpoint in this order:
-
-1. explicit `base_url` argument;
-2. `ADSPOWER_BASE_URL` environment variable;
-3. `http://127.0.0.1:50325`.
-
-Trailing slashes are removed so paths are joined consistently.
+The client resolves settings in this order: explicit argument, environment variable, library default.
 
 ```python
 from adspower import AdsPowerClient
 
-client = AdsPowerClient(base_url="http://127.0.0.1:50325/")
-assert client.config.base_url == "http://127.0.0.1:50325"
+client = AdsPowerClient(
+    base_url="http://127.0.0.1:50325",
+    api_key="secret",
+)
+assert client.health.status()
 ```
 
-The SDK does not perform a `/status` request before every operation. Network
-failures are reported from the requested operation. Health checks are explicit:
+Supported networking environment variables are `ADSPOWER_BASE_URL`, `ADSPOWER_API_KEY`,
+`ADSPOWER_BROWSER_START_TIMEOUT`, `ADSPOWER_BROWSER_PROBE_TIMEOUT`,
+`ADSPOWER_BROWSER_HOST`, and `ADSPOWER_BROWSER_ENDPOINT_POLICY`.
 
-```python
-client.health.check()
-```
+`base_url` must be HTTP(S), contain a host, and contain no credentials, query,
+fragment, or base path. `browser_host` is a hostname/IP without scheme, path,
+or port. IPv4 and IPv6 are supported.
 
-## Authentication
-
-Pass an API key directly or set `ADSPOWER_API_KEY`. It is attached to every
-request as `Authorization: Bearer ...`.
-
-```python
-client = AdsPowerClient(api_key="secret")
-```
-
-The key is excluded from dataclass output and client `repr`. Avoid logging raw
-HTTP request headers in application code.
+API keys are excluded from reprs. The Local API Authorization header is never
+forwarded to Selenium debugger, CDP, or `/json/version` requests.
 
 ## Timeouts
 
-The default timeout separates connection, read, write, and pool phases. Browser
-startup has its own 60-second default because it is often slower than CRUD.
+General HTTP and browser-start/probe timeouts are explicit and must be positive.
+Transport failures raise `AdsPowerConnectionError`; timeouts raise
+`AdsPowerTimeoutError`.
 
-```python
-import httpx
+## Docker and remote topology
 
-client = AdsPowerClient(
-    timeout=httpx.Timeout(connect=5, read=45, write=15, pool=5),
-    browser_start_timeout=90,
-)
+For Docker Desktop a typical Local API URL is
+`http://host.docker.internal:50325`. On Linux the container may need an
+explicit host-gateway mapping. Returned loopback browser endpoints can be
+rewritten to `browser_host` (or the Local API host) while preserving ports and
+paths. Use `browser_endpoint_policy="exact"` when returned endpoints are
+already reachable.
 
-session = client.browsers.start("profile-id", timeout=120)
-```
-
-Connection failures raise `AdsPowerConnectionError`; timeouts raise
-`AdsPowerTimeoutError`. A non-zero API code raises `AdsPowerAPIError` or a more
-specific authentication, rate-limit, or profile-not-found subtype.
-
-## Docker
-
-On Docker Desktop, connect to the host application through:
-
-```bash
-ADSPOWER_BASE_URL=http://host.docker.internal:50325
-```
-
-Linux Docker may require this Compose configuration:
-
-```yaml
-services:
-  worker:
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-```
-
-Returned Selenium and Playwright endpoints must also be reachable from the
-container. By default, loopback endpoints are rewritten to the Local API host
-while preserving the returned port and CDP path/browser id. Set `browser_host`
-when dynamic browser ports are exposed on a different host, or set
-`browser_endpoint_policy="exact"` to keep returned hosts unchanged.
-
-## Private remote hosts
-
-```python
-client = AdsPowerClient(
-    base_url="http://192.168.1.20:50325",
-    api_key="secret",
-)
-```
-
-Keep the service on a private network or VPN and restrict access with a firewall.
-Do not publish the Local API port directly to the internet. Remote browser
-attachment also requires AdsPower to return endpoints reachable by the SDK host.
+These are configuration mechanisms, not proof that a particular Docker or
+two-host deployment works. Stable release claims require the live topology gate.
 
 ## Rate limiting
 
-Rate limiting is opt-in because current server limits vary by endpoint and
-account configuration.
+Rate limiting is client-side and cannot reproduce AdsPower's undisclosed server
+algorithm. A global limit and endpoint limits are cumulative and are reserved
+together at dispatch. Separate clients/processes do not coordinate unless the
+same limiter is shared. Mutating requests are never retried automatically.
 
 ```python
 from adspower import AdsPowerClient, RateLimit
 
-client = AdsPowerClient(rate_limit=RateLimit(requests=2, period=1.0))
-```
-
-The sync limiter uses a thread lock. The async limiter uses an `asyncio.Lock`, so
-concurrent coroutines cannot pass the same timing check simultaneously.
-
-Endpoint-specific policies are cumulative with the global limiter:
-
-```python
 client = AdsPowerClient(
     rate_limit=RateLimit(2, 1.0),
-    endpoint_limits={
-        "/api/v2/browser-profile/cookies": RateLimit(1, 1.0),
-    },
+    endpoint_limits={"/api/v2/browser-profile/cookies": RateLimit(1, 1.0)},
 )
 ```
 
-The generic limiter is a rolling-window client-side guard, not an emulation of
-AdsPower's undisclosed server algorithm. `AdsPowerRatePolicy.conservative()`
-uses the documented 2 req/s global tier and the verified 1 req/s cookies
-exception. `AdsPowerRatePolicy.for_profile_count(n)` selects the documented
-2/5/10 req/s global tier from an explicit profile count. No automatic profile
-count discovery or automatic write retries are performed. Separate client
-instances and processes do not coordinate their budgets.
-
-## References
-
-- `adspower/config.py`
-- `adspower/transport.py`
-- `adspower/rate_limit.py`
-- `tests/test_v3_client.py`
+Only configure endpoint-specific values that are supported by first-party/live
+evidence for the AdsPower version you run.

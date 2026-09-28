@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import AsyncIterator, Iterator, Sequence
 from typing import Literal
 
 from typing_extensions import TypedDict, Unpack
@@ -67,10 +67,10 @@ class ProxiesResource:
         return self.create_many([config])
 
     def create_many(self, configs: Sequence[StoredProxyConfig]) -> tuple[str, ...]:
-        if isinstance(configs, (str, bytes)) or not configs or len(configs) > 500:
+        if isinstance(configs, (str, bytes)) or not configs:
             from ..errors import AdsPowerValidationError
 
-            raise AdsPowerValidationError("configs must contain 1 to 500 proxies")
+            raise AdsPowerValidationError("configs must be a non-empty sequence")
         data = response_data(
             self._transport.request(
                 c.PROXY_CREATE.method, c.PROXY_CREATE.path, json=[config.to_api() for config in configs]
@@ -101,6 +101,20 @@ class ProxiesResource:
             data, item_keys=("list", "items"), parser=parse_proxy, requested_page=page, requested_page_size=page_size
         )
 
+    def iter_all(
+        self, *, proxy_ids: Sequence[str] | None = None, page: int = 1, page_size: int = 50
+    ) -> Iterator[Proxy]:
+        """Iterate proxies across all pages."""
+        while True:
+            current = self.list(proxy_ids=proxy_ids, page=page, page_size=page_size)
+            yield from current.items
+            if current.total_pages is not None:
+                if page >= current.total_pages:
+                    break
+            elif len(current.items) < page_size:
+                break
+            page += 1
+
     def delete(self, proxy_id: str) -> None:
         self.delete_many([proxy_id])
 
@@ -123,10 +137,10 @@ class AsyncProxiesResource:
         return await self.create_many([config])
 
     async def create_many(self, configs: Sequence[StoredProxyConfig]) -> tuple[str, ...]:
-        if isinstance(configs, (str, bytes)) or not configs or len(configs) > 500:
+        if isinstance(configs, (str, bytes)) or not configs:
             from ..errors import AdsPowerValidationError
 
-            raise AdsPowerValidationError("configs must contain 1 to 500 proxies")
+            raise AdsPowerValidationError("configs must be a non-empty sequence")
         data = response_data(
             await self._transport.request(
                 c.PROXY_CREATE.method, c.PROXY_CREATE.path, json=[config.to_api() for config in configs]
@@ -158,6 +172,21 @@ class AsyncProxiesResource:
         return parse_page(
             data, item_keys=("list", "items"), parser=parse_proxy, requested_page=page, requested_page_size=page_size
         )
+
+    async def iter_all(
+        self, *, proxy_ids: Sequence[str] | None = None, page: int = 1, page_size: int = 50
+    ) -> AsyncIterator[Proxy]:
+        """Iterate proxies across all pages."""
+        while True:
+            current = await self.list(proxy_ids=proxy_ids, page=page, page_size=page_size)
+            for item in current.items:
+                yield item
+            if current.total_pages is not None:
+                if page >= current.total_pages:
+                    break
+            elif len(current.items) < page_size:
+                break
+            page += 1
 
     async def delete(self, proxy_id: str) -> None:
         await self.delete_many([proxy_id])

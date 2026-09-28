@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import sys
 import types
 from typing import Any
@@ -116,3 +117,49 @@ def test_selenium_validates_options_before_import() -> None:
     )
     with pytest.raises(AdsPowerValidationError):
         adapter.__enter__()
+
+
+def test_sync_playwright_cleanup_does_not_mask_control_flow(monkeypatch: pytest.MonkeyPatch) -> None:
+    class BadBrowser(FakeBrowser):
+        def close(self) -> None:
+            raise KeyboardInterrupt("cleanup interrupt")
+
+    adapter = PlaywrightAdapter(BrowserConnection(playwright_cdp_url="ws://localhost/devtools/browser/id"))
+    adapter.browser = BadBrowser()
+    adapter._playwright = types.SimpleNamespace(stop=lambda: None)
+
+    original = RuntimeError("user error")
+    try:
+        raise original
+    except RuntimeError:
+        adapter.close(preserve_error=True)
+
+    assert adapter.browser is None
+
+
+def test_selenium_cleanup_does_not_mask_control_flow() -> None:
+    class BadDriver:
+        def quit(self) -> None:
+            raise KeyboardInterrupt("cleanup interrupt")
+
+    adapter = SeleniumAdapter(BrowserConnection(selenium_debugger_address="localhost:9222"))
+    adapter.driver = BadDriver()
+    adapter.close(preserve_error=True)
+    assert adapter.driver is None
+
+
+@pytest.mark.asyncio
+async def test_async_playwright_cleanup_does_not_mask_cancellation() -> None:
+    class BadAsyncBrowser:
+        async def close(self) -> None:
+            raise asyncio.CancelledError()
+
+    adapter = AsyncPlaywrightAdapter(BrowserConnection(playwright_cdp_url="ws://localhost/devtools/browser/id"))
+    adapter.browser = BadAsyncBrowser()
+    adapter._playwright = types.SimpleNamespace(stop=lambda: _noop_async())
+    await adapter.close(preserve_error=True)
+    assert adapter.browser is None
+
+
+async def _noop_async() -> None:
+    return None

@@ -59,10 +59,9 @@ def id_list(
         raise AdsPowerValidationError(f"{name} must be a sequence, not a string")
     result: list[JsonValue] = []
     for value in values:
-        string_value = str(value)
-        if not string_value:
-            raise AdsPowerValidationError(f"{name} must contain non-empty ids")
-        result.append(string_value)
+        if not isinstance(value, str) or not value:
+            raise AdsPowerValidationError(f"{name} must contain non-empty string ids")
+        result.append(value)
     if not result:
         raise AdsPowerValidationError(f"{name} must contain non-empty ids")
     if maximum is not None and len(result) > maximum:

@@ -1,39 +1,33 @@
-# AdsPower SDK documentation
-
-This index separates user workflows from implementation and release guidance so
-each topic can be read independently.
+# AdsPower SDK v3 documentation
 
 ## User guides
 
-- [Configuration and networking](configuration.md) — endpoint resolution,
-  authentication, timeouts, Docker, remote hosts, and rate limiting.
-- [Profiles and browser sessions](profiles-and-sessions.md) — V2 profile CRUD,
-  tolerant response models, groups, and browser lifecycle.
-- [Automation adapters](automation.md) — Selenium and Playwright attachment,
-  endpoint selection, cleanup, and optional dependencies.
-- [API coverage](api-coverage.md) — supported Local API operations, endpoints,
-  sync/async parity, and deliberate limitations.
-- [Migration from 2.x to 3.x](migration-2-to-3.md) — breaking changes and direct
-  replacements for the old class-level APIs.
+- [Configuration and networking](configuration.md)
+- [Profiles and browser sessions](profiles-and-sessions.md)
+- [Automation](automation.md)
+- [Errors](errors.md)
+- [Typed API coverage](api-coverage.md)
+- [Local API contract](local-api-contract.md)
+- [Migration from 2.x](migration-2-to-3.md)
 
 ## Maintainer guide
 
-- [Development and release checks](development.md) — architecture, tests, CI,
-  integration requirements, dependency matrices, and release gates.
+- [Architecture](architecture.md)
+- [Development and release checks](development.md)
 
 ## Source map
 
-| Area | Main implementation |
+| Area | Implementation |
 | --- | --- |
 | Configuration | `adspower/config.py` |
-| Sync/async transport | `adspower/transport.py` |
-| Models | `adspower/models.py` |
-| V2 and group APIs | `adspower/api.py` |
-| Sync client and sessions | `adspower/client.py` |
-| Async client and sessions | `adspower/async_client.py` |
-| Browser adapters | `adspower/automation.py` |
+| Sync/async clients | `adspower/client.py`, `adspower/async_client.py` |
+| HTTP transport | `adspower/transport/` |
+| Local API protocol | `adspower/protocol.py` |
+| Endpoint registry | `adspower/_contracts.py` |
+| Resource serializers | `adspower/resources/` |
+| Domain/config models | `adspower/models/` |
+| Automation adapters | `adspower/automation/` |
 | Rate limiting | `adspower/rate_limit.py` |
-| Exception hierarchy | `adspower/exceptions.py` |
+| Errors | `adspower/errors.py` |
 
-The original modernization plan is an implementation input and is intentionally
-not part of the tracked documentation set.
+v3 intentionally has no compatibility layer for intermediate v3 branch APIs.

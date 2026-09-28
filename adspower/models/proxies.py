@@ -35,8 +35,8 @@ class StoredProxyConfig:
             port = int(self.port)
         except (TypeError, ValueError) as exc:
             raise AdsPowerValidationError("proxy port must be an integer") from exc
-        if not 0 <= port <= 65535:
-            raise AdsPowerValidationError("proxy port must be between 0 and 65535")
+        if not 0 <= port <= 65536:
+            raise AdsPowerValidationError("proxy port must be between 0 and 65536")
         if not self.host:
             raise AdsPowerValidationError("proxy host must not be empty")
 

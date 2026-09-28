@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator, Iterator
+
 from .. import _contracts as c
 from ..models import Group, Page
 from ..models.profiles import parse_group
@@ -29,8 +31,8 @@ class GroupsResource:
             c.GROUP_UPDATE,
         )
 
-    def list(self, *, name: str | None = None, page: int = 1, page_size: int = 100) -> Page[Group]:
-        validate_page(page, page_size, maximum=2000)
+    def list(self, *, name: str | None = None, page: int = 1, page_size: int = 10) -> Page[Group]:
+        validate_page(page, page_size, maximum=100)
         params = {"page": page, "page_size": page_size, "group_name": name}
         data = response_data(
             self._transport.request(c.GROUP_LIST.method, c.GROUP_LIST.path, params=params), c.GROUP_LIST
@@ -38,6 +40,18 @@ class GroupsResource:
         return parse_page(
             data, item_keys=("list", "items"), parser=parse_group, requested_page=page, requested_page_size=page_size
         )
+
+    def iter_all(self, *, name: str | None = None, page: int = 1, page_size: int = 10) -> Iterator[Group]:
+        """Iterate groups across all pages."""
+        while True:
+            current = self.list(name=name, page=page, page_size=page_size)
+            yield from current.items
+            if current.total_pages is not None:
+                if page >= current.total_pages:
+                    break
+            elif len(current.items) < page_size:
+                break
+            page += 1
 
 
 class AsyncGroupsResource:
@@ -63,8 +77,8 @@ class AsyncGroupsResource:
             c.GROUP_UPDATE,
         )
 
-    async def list(self, *, name: str | None = None, page: int = 1, page_size: int = 100) -> Page[Group]:
-        validate_page(page, page_size, maximum=2000)
+    async def list(self, *, name: str | None = None, page: int = 1, page_size: int = 10) -> Page[Group]:
+        validate_page(page, page_size, maximum=100)
         params = {"page": page, "page_size": page_size, "group_name": name}
         data = response_data(
             await self._transport.request(c.GROUP_LIST.method, c.GROUP_LIST.path, params=params), c.GROUP_LIST
@@ -72,3 +86,18 @@ class AsyncGroupsResource:
         return parse_page(
             data, item_keys=("list", "items"), parser=parse_group, requested_page=page, requested_page_size=page_size
         )
+
+    async def iter_all(
+        self, *, name: str | None = None, page: int = 1, page_size: int = 10
+    ) -> AsyncIterator[Group]:
+        """Iterate groups across all pages."""
+        while True:
+            current = await self.list(name=name, page=page, page_size=page_size)
+            for item in current.items:
+                yield item
+            if current.total_pages is not None:
+                if page >= current.total_pages:
+                    break
+            elif len(current.items) < page_size:
+                break
+            page += 1

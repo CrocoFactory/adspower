@@ -44,9 +44,9 @@ def _launch_args(
             return value
         args = [value]
     else:
-        if isinstance(value, (bytes, bytearray)):
+        if isinstance(value, (bytes, bytearray)) or any(not isinstance(item, str) for item in value):
             raise AdsPowerValidationError("launch_args must be a string or sequence of strings")
-        args = [str(item) for item in value]
+        args = list(value)
     if (
         start_maximized
         and "--start-maximized" not in args
@@ -171,11 +171,13 @@ class BrowserSession(AbstractContextManager["BrowserSession"]):
         exc: BaseException | None,
         traceback: TracebackType | None,
     ) -> bool:
-        try:
+        if exc is None:
             self.stop()
-        except Exception:
-            if exc is None:
-                raise
+        else:
+            try:
+                self.stop()
+            except BaseException:
+                pass
         return False
 
 
@@ -227,11 +229,13 @@ class AsyncBrowserSession(AbstractAsyncContextManager["AsyncBrowserSession"]):
         )
 
     async def __aexit__(self, exc_type: object, exc: BaseException | None, traceback: object) -> bool:
-        try:
+        if exc is None:
             await self.stop()
-        except Exception:
-            if exc is None:
-                raise
+        else:
+            try:
+                await self.stop()
+            except BaseException:
+                pass
         return False
 
 

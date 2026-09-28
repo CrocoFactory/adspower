@@ -112,11 +112,11 @@ class SeleniumAdapter(AbstractContextManager[Any]):
         if self._closed:
             return
         self._closed = True
-        error: Exception | None = None
+        error: BaseException | None = None
         if self.driver is not None:
             try:
                 self.driver.quit()
-            except Exception as exc:
+            except BaseException as exc:
                 error = exc
             finally:
                 self.driver = None

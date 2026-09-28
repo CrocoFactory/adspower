@@ -81,7 +81,7 @@ class PlaywrightAdapter(AbstractContextManager[Any]):
         if self._closed:
             return
         self._closed = True
-        error: Exception | None = None
+        error: BaseException | None = None
         for cleanup in (
             (lambda: self.browser.close()) if self.browser is not None else None,
             (lambda: self._playwright.stop()) if self._playwright is not None else None,
@@ -90,7 +90,7 @@ class PlaywrightAdapter(AbstractContextManager[Any]):
                 continue
             try:
                 cleanup()
-            except Exception as exc:
+            except BaseException as exc:
                 error = error or exc
         self.browser = None
         self._playwright = None
@@ -150,7 +150,7 @@ class AsyncPlaywrightAdapter(AbstractAsyncContextManager[Any]):
         if self._closed:
             return
         self._closed = True
-        error: Exception | None = None
+        error: BaseException | None = None
         cleanups = []
         if self.browser is not None:
             cleanups.append(self.browser.close)
@@ -159,7 +159,7 @@ class AsyncPlaywrightAdapter(AbstractAsyncContextManager[Any]):
         for cleanup in cleanups:
             try:
                 await cleanup()
-            except Exception as exc:
+            except BaseException as exc:
                 error = error or exc
         self.browser = None
         self._playwright = None
