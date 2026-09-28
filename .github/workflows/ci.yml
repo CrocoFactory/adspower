@@ -99,6 +99,7 @@ jobs:
         with:
           python-version: "3.14"
       - run: pip install -U "httpx<1" "selenium<5" "playwright>=1.61,<2" typing-extensions pytest pytest-asyncio
+      - run: pip install -e . --no-deps
       - run: pytest -m "not integration" tests/automation tests/contracts
 
   minimum-automation:
@@ -109,4 +110,5 @@ jobs:
         with:
           python-version: "3.10"
       - run: pip install "httpx==0.27.2" "selenium==4.20.0" "playwright==1.61.0" "typing-extensions==4.12.0" pytest pytest-asyncio
+      - run: pip install -e . --no-deps
       - run: pytest -m "not integration" tests/automation tests/contracts
