@@ -98,7 +98,9 @@ class SeleniumAdapter(AbstractContextManager[Any]):
                             timeout=self.probe_timeout,
                         )
                 service = Service(**kwargs)
-            self.driver = WebDriver(service=service, options=options, **self.webdriver_kwargs)
+            self.driver = WebDriver(  # pyright: ignore[reportArgumentType]
+                service=service, options=options, **self.webdriver_kwargs
+            )
             return self.driver
         except BaseException:
             self.close(preserve_error=True)
