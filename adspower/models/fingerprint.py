@@ -81,9 +81,7 @@ _CHROME_KERNELS = frozenset(
         "126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 ua_auto"
     ).split()
 )
-_FIREFOX_KERNELS = frozenset(
-    "100 107 114 120 123 126 129 132 135 138 141 144 ua_auto".split()
-)
+_FIREFOX_KERNELS = frozenset("100 107 114 120 123 126 129 132 135 138 141 144 ua_auto".split())
 
 
 @dataclass(frozen=True, slots=True)
