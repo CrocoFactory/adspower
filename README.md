@@ -95,8 +95,9 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-The async client uses Playwright's exact CDP websocket returned by AdsPower and
-disconnects before stopping the profile. Cleanup is idempotent.
+The async client preserves AdsPower's CDP path/browser identifier. In remote
+deployments, loopback hosts can be rewritten by the configured browser endpoint
+policy before Playwright attaches. Cleanup is idempotent.
 
 ## Profiles and groups
 
