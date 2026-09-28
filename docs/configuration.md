@@ -33,10 +33,12 @@ Transport failures raise `AdsPowerConnectionError`; timeouts raise
 
 For Docker Desktop a typical Local API URL is
 `http://host.docker.internal:50325`. On Linux the container may need an
-explicit host-gateway mapping. Returned loopback browser endpoints can be
-rewritten to `browser_host` (or the Local API host) while preserving ports and
-paths. Use `browser_endpoint_policy="exact"` when returned endpoints are
-already reachable.
+explicit host-gateway mapping. The default `browser_endpoint_policy="exact"`
+uses AdsPower's returned debugger/CDP endpoints unchanged; this avoids CDP
+WebSocket host-header rejections on Local API installations. For a remote or
+container topology where those loopback endpoints are not reachable, opt into
+`browser_endpoint_policy="rewrite_loopback_to_api_host"` and, when needed,
+set `browser_host` to the reachable address.
 
 These are configuration mechanisms, not proof that a particular Docker or
 two-host deployment works. Stable release claims require the live topology gate.
@@ -49,13 +51,14 @@ together at dispatch. Separate clients/processes do not coordinate unless the
 same limiter is shared. Mutating requests are never retried automatically.
 
 ```python
-from adspower import AdsPowerClient, RateLimit
+from adspower import AdsPowerClient, AdsPowerRatePolicy
 
 client = AdsPowerClient(
-    rate_limit=RateLimit(2, 1.0),
-    endpoint_limits={"/api/v2/browser-profile/cookies": RateLimit(1, 1.0)},
+    rate_policy=AdsPowerRatePolicy.for_profile_count(profile_count=200),
 )
 ```
 
-Only configure endpoint-specific values that are supported by first-party/live
-evidence for the AdsPower version you run.
+`AdsPowerRatePolicy` applies AdsPower's published 1 req/s limits to group and
+profile listings, cookies, and user-agent generation. Only configure additional
+endpoint-specific values that are supported by first-party/live evidence for the
+AdsPower version you run.

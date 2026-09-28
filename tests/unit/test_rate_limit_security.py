@@ -31,6 +31,11 @@ def test_rate_limit_value_and_policy_validation() -> None:
     assert AdsPowerRatePolicy.for_profile_count(200).global_limit.requests == 2
     assert AdsPowerRatePolicy.for_profile_count(201).global_limit.requests == 5
     assert AdsPowerRatePolicy.for_profile_count(5001).global_limit.requests == 10
+    policy = AdsPowerRatePolicy.for_profile_count(0)
+    assert policy.endpoint_limits[("GET", "/api/v1/group/list")] == RateLimit(1, 1)
+    assert policy.endpoint_limits[("POST", "/api/v2/browser-profile/list")] == RateLimit(1, 1)
+    assert policy.endpoint_limits[("GET", "/api/v2/browser-profile/cookies")] == RateLimit(1, 1)
+    assert policy.endpoint_limits[("POST", "/api/v2/browser-profile/ua")] == RateLimit(1, 1)
 
 
 def test_sync_composite_limiter_waits_once_and_reserves_together() -> None:

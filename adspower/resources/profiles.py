@@ -199,7 +199,7 @@ def _profile_list_body(
         or not isinstance(page_size, int)
     ):
         raise AdsPowerValidationError("page and page_size must be integers")
-    validate_page(page, page_size, maximum=200)
+    validate_page(page, page_size, maximum=100)
     if group_id is not None and not isinstance(group_id, str):
         raise AdsPowerValidationError("group_id must be a string")
     if sort_type is not None and sort_type not in {"profile_no", "last_open_time", "created_time"}:
@@ -253,6 +253,8 @@ def _cookies(value: object) -> tuple[JsonObject, ...]:
     data = require_object(value, field="cookies")
     raw = data.get("cookies", data.get("cookie"))
     if isinstance(raw, str):
+        if not raw.strip():
+            return ()
         import json
 
         try:
@@ -310,7 +312,7 @@ class ProfilesResource:
         name: str | None = None,
         name_filter: NameFilter | None = None,
         page: int = 1,
-        page_size: int = 200,
+        page_size: int = 100,
     ) -> Page[Profile]:
         """Return one server-side filtered profile page."""
         body = _profile_list_body(
@@ -350,7 +352,7 @@ class ProfilesResource:
         name: str | None = None,
         name_filter: NameFilter | None = None,
         page: int = 1,
-        page_size: int = 200,
+        page_size: int = 100,
     ) -> Iterator[Profile]:
         """Iterate matching profiles across all returned pages."""
         while True:
@@ -522,7 +524,7 @@ class AsyncProfilesResource:
         name: str | None = None,
         name_filter: NameFilter | None = None,
         page: int = 1,
-        page_size: int = 200,
+        page_size: int = 100,
     ) -> Page[Profile]:
         """Return one server-side filtered profile page."""
         body = _profile_list_body(
@@ -562,7 +564,7 @@ class AsyncProfilesResource:
         name: str | None = None,
         name_filter: NameFilter | None = None,
         page: int = 1,
-        page_size: int = 200,
+        page_size: int = 100,
     ) -> AsyncIterator[Profile]:
         """Iterate matching profiles across all returned pages."""
         while True:

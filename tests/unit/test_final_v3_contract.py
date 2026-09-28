@@ -12,7 +12,8 @@ from adspower import (
     InlineProxyConfig,
     StoredProxyConfig,
 )
-from adspower.resources.profiles import _profile_fields, _profile_list_body
+from adspower.models.kernels import parse_kernel
+from adspower.resources.profiles import _cookies, _profile_fields, _profile_list_body
 
 
 def ok(data: object = None) -> httpx.Response:
@@ -21,16 +22,16 @@ def ok(data: object = None) -> httpx.Response:
 
 def test_pinned_pagination_limits() -> None:
     with AdsPowerClient(transport=httpx.MockTransport(lambda request: ok({"list": []}))) as client:
-        client.profiles.list(page_size=200)
-        client.groups.list(page_size=100)
+        client.profiles.list(page_size=100)
+        client.groups.list(page_size=2000)
         client.categories.list(page_size=100)
         client.proxies.list(page_size=200)
         client.tags.list(page_size=200)
 
         with pytest.raises(AdsPowerValidationError):
-            client.profiles.list(page_size=201)
+            client.profiles.list(page_size=101)
         with pytest.raises(AdsPowerValidationError):
-            client.groups.list(page_size=101)
+            client.groups.list(page_size=2001)
         with pytest.raises(AdsPowerValidationError):
             client.categories.list(page_size=101)
         with pytest.raises(AdsPowerValidationError):
@@ -61,7 +62,7 @@ def test_profile_request_validation_matches_pinned_contract() -> None:
             name=None,
             name_filter=None,
             page=1,
-            page_size=200,
+            page_size=101,
         )
 
 
@@ -104,6 +105,9 @@ def test_verified_proxy_and_kernel_contracts() -> None:
     with pytest.raises(AdsPowerValidationError):
         StoredProxyConfig("http", "host", 65537)
     with pytest.raises(AdsPowerValidationError):
+        with AdsPowerClient(transport=httpx.MockTransport(lambda request: ok())) as client:
+            client.proxies.create_many([StoredProxyConfig("http", "host", 8080)] * 501)
+    with pytest.raises(AdsPowerValidationError):
         BrowserKernelConfig("firefox", "142")
     with pytest.raises(AdsPowerValidationError):
         FingerprintConfig(
@@ -111,6 +115,16 @@ def test_verified_proxy_and_kernel_contracts() -> None:
             tls_enabled=True,
             tls="0xC02C",
         )
+
+
+def test_empty_cookie_string_is_an_empty_cookie_collection() -> None:
+    assert _cookies({"cookies": ""}) == ()
+
+
+def test_kernel_parser_accepts_live_kernel_field_name() -> None:
+    parsed = parse_kernel({"kernel_type": "Chrome", "kernel": "142", "is_downloaded": True})
+    assert parsed.version == "142"
+    assert parsed.extra == {"is_downloaded": True}
 
 
 def test_paginated_iterators_exist_for_all_supported_resources() -> None:

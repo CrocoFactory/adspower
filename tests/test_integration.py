@@ -9,9 +9,17 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
-from adspower import AdsPowerClient, AsyncAdsPowerClient, StoredProxyConfig
+from adspower import AdsPowerClient, AdsPowerRatePolicy, AsyncAdsPowerClient, StoredProxyConfig
 
 pytestmark = pytest.mark.integration
+
+
+def _client() -> AdsPowerClient:
+    return AdsPowerClient(rate_policy=AdsPowerRatePolicy.conservative())
+
+
+def _async_client() -> AsyncAdsPowerClient:
+    return AsyncAdsPowerClient(rate_policy=AdsPowerRatePolicy.conservative())
 
 
 def _integration_enabled() -> None:
@@ -31,7 +39,7 @@ def test_real_disposable_profile_crud_and_catalog_reads() -> None:
     _integration_enabled()
     profile_id: str | None = None
     profile_name = f"adspower-sdk-integration-{uuid.uuid4().hex}"
-    with AdsPowerClient() as client:
+    with _client() as client:
         groups = client.groups.list(page_size=1)
         categories = client.categories.list(page_size=1)
         group_id = os.getenv("ADSPOWER_TEST_GROUP_ID") or (groups.items[0].group_id if groups.items else "0")
@@ -60,7 +68,7 @@ def test_real_disposable_proxy_crud() -> None:
         pytest.skip("ADSPOWER_TEST_PROXY_HOST and ADSPOWER_TEST_PROXY_PORT are required")
 
     proxy_id: str | None = None
-    with AdsPowerClient() as client:
+    with _client() as client:
         try:
             ids = client.proxies.create(
                 StoredProxyConfig(
@@ -113,7 +121,7 @@ def test_page_url() -> Iterator[str]:
 def test_real_selenium_attach(test_page_url: str) -> None:
     from selenium.webdriver.common.by import By
 
-    with AdsPowerClient() as client:
+    with _client() as client:
         with client.browsers.session(_integration_profile_id(), headless=False) as session:
             with session.selenium() as driver:
                 driver.get(test_page_url)
@@ -122,7 +130,7 @@ def test_real_selenium_attach(test_page_url: str) -> None:
 
 
 def test_real_sync_playwright_attach(test_page_url: str) -> None:
-    with AdsPowerClient() as client:
+    with _client() as client:
         with client.browsers.session(_integration_profile_id()) as session:
             with session.playwright() as browser:
                 assert browser.is_connected()
@@ -134,7 +142,7 @@ def test_real_sync_playwright_attach(test_page_url: str) -> None:
 
 @pytest.mark.asyncio
 async def test_real_async_playwright_attach(test_page_url: str) -> None:
-    async with AsyncAdsPowerClient() as client:
+    async with _async_client() as client:
         async with await client.browsers.session(_integration_profile_id()) as session:
             async with session.playwright() as browser:
                 assert browser.is_connected()
@@ -155,7 +163,7 @@ def _high_impact_enabled() -> None:
 @pytest.mark.asyncio
 async def test_real_async_playwright_cancellation_cleanup(test_page_url: str) -> None:
     profile_id = _integration_profile_id()
-    async with AsyncAdsPowerClient() as client:
+    async with _async_client() as client:
         with pytest.raises(asyncio.CancelledError):
             async with await client.browsers.session(profile_id) as session:
                 async with session.playwright() as browser:
@@ -176,7 +184,7 @@ def test_real_high_impact_profile_operations() -> None:
     if not receiver:
         pytest.fail("ADSPOWER_TEST_SHARE_RECEIVER is required for the high-impact release gate")
 
-    with AdsPowerClient() as client:
+    with _client() as client:
         client.profiles.new_fingerprint(profile_ids=[profile_id])
         client.profiles.share([profile_id], receiver)
         client.browsers.stop_all()
@@ -189,11 +197,11 @@ def test_real_high_impact_kernel_download() -> None:
     if not kernel_version:
         pytest.fail("ADSPOWER_TEST_KERNEL_VERSION is required for the high-impact release gate")
 
-    with AdsPowerClient() as client:
+    with _client() as client:
         client.kernels.download(kernel_type, kernel_version)  # type: ignore[arg-type]
 
 
 def test_real_high_impact_patch_update() -> None:
     _high_impact_enabled()
-    with AdsPowerClient() as client:
+    with _client() as client:
         client.app.update_patch(os.getenv("ADSPOWER_TEST_PATCH_CHANNEL", "stable"))  # type: ignore[arg-type]

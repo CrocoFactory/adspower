@@ -91,7 +91,7 @@ class AdsPowerConfig:
     browser_start_timeout: float = 60.0
     browser_probe_timeout: float = 2.0
     browser_host: str | None = None
-    browser_endpoint_policy: BrowserEndpointPolicy = "rewrite_loopback_to_api_host"
+    browser_endpoint_policy: BrowserEndpointPolicy = "exact"
 
     @classmethod
     def resolve(
@@ -128,7 +128,7 @@ class AdsPowerConfig:
         policy_value = (
             browser_endpoint_policy
             if browser_endpoint_policy is not None
-            else os.getenv("ADSPOWER_BROWSER_ENDPOINT_POLICY", "rewrite_loopback_to_api_host")
+            else os.getenv("ADSPOWER_BROWSER_ENDPOINT_POLICY", "exact")
         )
         if policy_value not in {"rewrite_loopback_to_api_host", "exact"}:
             raise AdsPowerConfigurationError("invalid browser_endpoint_policy")

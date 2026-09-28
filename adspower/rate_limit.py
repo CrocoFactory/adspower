@@ -32,14 +32,25 @@ class AdsPowerRatePolicy:
 
     @classmethod
     def conservative(cls) -> "AdsPowerRatePolicy":
-        return cls(global_limit=RateLimit(2, 1.0))
+        return cls(global_limit=RateLimit(2, 1.0), endpoint_limits=_restricted_endpoint_limits())
 
     @classmethod
     def for_profile_count(cls, profile_count: int) -> "AdsPowerRatePolicy":
         if profile_count < 0:
             raise ValueError("profile_count must be >= 0")
         requests = 2 if profile_count <= 200 else 5 if profile_count <= 5000 else 10
-        return cls(global_limit=RateLimit(requests, 1.0))
+        return cls(global_limit=RateLimit(requests, 1.0), endpoint_limits=_restricted_endpoint_limits())
+
+
+def _restricted_endpoint_limits() -> dict[EndpointLimitKey, RateLimit]:
+    """Return the documented one-request-per-second Local API limits."""
+    limit = RateLimit(1, 1.0)
+    return {
+        ("GET", "/api/v1/group/list"): limit,
+        ("POST", "/api/v2/browser-profile/list"): limit,
+        ("GET", "/api/v2/browser-profile/cookies"): limit,
+        ("POST", "/api/v2/browser-profile/ua"): limit,
+    }
 
 
 def _normalize_limits(

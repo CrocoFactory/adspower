@@ -21,7 +21,7 @@ than something inferred from mocks.
 | categories.list | GET `/api/v2/category/list` | query | `category_id`, page, limit 1–100 | release-gated |
 | profiles.create | POST `/api/v2/browser-profile/create` | body | typed profile/proxy/fingerprint fields; no-proxy fallback only | release-gated |
 | profiles.update | POST `/api/v2/browser-profile/update` | body | mutation returns no synthetic Profile | release-gated |
-| profiles.list | POST `/api/v2/browser-profile/list` | body | limit 1–200; name/tag filters; pagination metadata | release-gated |
+| profiles.list | POST `/api/v2/browser-profile/list` | body | limit 1–100; name/tag filters; pagination metadata | release-gated |
 | profiles.delete_many | POST `/api/v2/browser-profile/delete` | body | profile id array | release-gated |
 | profiles.move | POST `/api/v1/user/regroup` | body | group + user ids | release-gated |
 | profiles.cookies | GET `/api/v2/browser-profile/cookies` | query | one selector | release-gated |
@@ -37,8 +37,8 @@ than something inferred from mocks.
 | browsers.cloud_status | POST `/api/v1/browser/cloud-active` | body | max 100 comma-separated user ids | release-gated |
 | groups.create | POST `/api/v1/group/create` | body | group_name + optional remark | release-gated |
 | groups.update | POST `/api/v1/group/update` | body | numeric group_id + group_name | release-gated |
-| groups.list | GET `/api/v1/group/list` | query | page_size max 100, default 10 | release-gated |
-| proxies.create_many | POST `/api/v2/proxy-list/create` | array body | no batch cap invented; proxy port contract 0–65536 | release-gated |
+| groups.list | GET `/api/v1/group/list` | query | page_size max 2000, default 10 | release-gated |
+| proxies.create_many | POST `/api/v2/proxy-list/create` | array body | batch maximum 500; proxy port contract 0–65536 | release-gated |
 | proxies.update | POST `/api/v2/proxy-list/update` | body | typed proxy fields | release-gated |
 | proxies.list | POST `/api/v2/proxy-list/list` | body | limit 1–200, default 50 | release-gated |
 | proxies.delete_many | POST `/api/v2/proxy-list/delete` | body | max 100 ids | release-gated |

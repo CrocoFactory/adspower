@@ -32,7 +32,7 @@ def test_profile_create_list_update_and_lookup_contract() -> None:
         if request.url.path.endswith("/create"):
             return envelope({"profile_id": "p1", "profile_no": "42"})
         if request.url.path.endswith("/list"):
-            assert body["limit"] in {1, 200}
+            assert body["limit"] in {1, 100}
             return envelope(
                 {
                     "list": [{"profile_id": "p1", "profile_no": "42", "name": "shop"}],
@@ -60,7 +60,7 @@ def test_profile_create_list_update_and_lookup_contract() -> None:
         assert page.total_count == 1
         assert page.items[0].profile_id == "p1"
         list_body = requests[1][2]
-        assert list_body["limit"] == 200
+        assert list_body["limit"] == 100
         assert list_body["name_filter"] == "include"
         assert list_body["tag_ids"] == ["tag1"]
 
@@ -115,8 +115,8 @@ def test_browser_start_omits_defaults_and_session_owns_stop() -> None:
         transport=httpx.MockTransport(handler),
     ) as client:
         with client.browsers.session("p1", start_maximized=True) as session:
-            assert session.connection.selenium_debugger_address == "10.0.0.2:9222"
-            assert session.connection.playwright_cdp_url == "ws://10.0.0.2:9222/devtools/browser/abc"
+            assert session.connection.selenium_debugger_address == "127.0.0.1:9222"
+            assert session.connection.playwright_cdp_url == "ws://127.0.0.1:9222/devtools/browser/abc"
         start_body = requests[0][2]
         assert "headless" not in start_body
         assert start_body["launch_args"] == ["--start-maximized"]

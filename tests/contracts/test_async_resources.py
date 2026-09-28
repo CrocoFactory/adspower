@@ -124,7 +124,7 @@ async def test_async_resource_surface_and_parity() -> None:
         await client.profiles.share(["p1"], "x@example.test")
 
         session = await client.browsers.start("p1", headless=True)
-        assert session.connection.selenium_debugger_address == "10.0.0.2:9222"
+        assert session.connection.selenium_debugger_address == "127.0.0.1:9222"
         await session.stop()
         await client.browsers.stop(profile_no="1")
         await client.browsers.stop_all()

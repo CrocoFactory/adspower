@@ -7,7 +7,7 @@ from typing_extensions import TypedDict, Unpack
 
 from .. import _contracts as c
 from .._json import JsonValue, first_present, require_object
-from ..errors import AdsPowerProtocolError
+from ..errors import AdsPowerProtocolError, AdsPowerValidationError
 from ..models import Page, Proxy
 from ..models.proxies import StoredProxyConfig, parse_proxy
 from ._common import (
@@ -68,9 +68,9 @@ class ProxiesResource:
 
     def create_many(self, configs: Sequence[StoredProxyConfig]) -> tuple[str, ...]:
         if isinstance(configs, (str, bytes)) or not configs:
-            from ..errors import AdsPowerValidationError
-
             raise AdsPowerValidationError("configs must be a non-empty sequence")
+        if len(configs) > 500:
+            raise AdsPowerValidationError("configs must contain at most 500 proxies")
         data = response_data(
             self._transport.request(
                 c.PROXY_CREATE.method, c.PROXY_CREATE.path, json=[config.to_api() for config in configs]
@@ -138,9 +138,9 @@ class AsyncProxiesResource:
 
     async def create_many(self, configs: Sequence[StoredProxyConfig]) -> tuple[str, ...]:
         if isinstance(configs, (str, bytes)) or not configs:
-            from ..errors import AdsPowerValidationError
-
             raise AdsPowerValidationError("configs must be a non-empty sequence")
+        if len(configs) > 500:
+            raise AdsPowerValidationError("configs must contain at most 500 proxies")
         data = response_data(
             await self._transport.request(
                 c.PROXY_CREATE.method, c.PROXY_CREATE.path, json=[config.to_api() for config in configs]

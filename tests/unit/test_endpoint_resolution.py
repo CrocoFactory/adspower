@@ -25,7 +25,10 @@ def test_endpoint_resolution_exact_and_remote_rewrite() -> None:
 
     rewritten = resolve_browser_connection(
         connection,
-        AdsPowerConfig.resolve(base_url="http://10.0.0.2:50325"),
+        AdsPowerConfig.resolve(
+            base_url="http://10.0.0.2:50325",
+            browser_endpoint_policy="rewrite_loopback_to_api_host",
+        ),
     )
     assert rewritten.selenium_debugger_address == "10.0.0.2:9222"
     assert rewritten.playwright_cdp_url == "ws://10.0.0.2:9222/devtools/browser/id"

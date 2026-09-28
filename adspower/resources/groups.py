@@ -32,7 +32,7 @@ class GroupsResource:
         )
 
     def list(self, *, name: str | None = None, page: int = 1, page_size: int = 10) -> Page[Group]:
-        validate_page(page, page_size, maximum=100)
+        validate_page(page, page_size, maximum=2000)
         params = {"page": page, "page_size": page_size, "group_name": name}
         data = response_data(
             self._transport.request(c.GROUP_LIST.method, c.GROUP_LIST.path, params=params), c.GROUP_LIST
@@ -78,7 +78,7 @@ class AsyncGroupsResource:
         )
 
     async def list(self, *, name: str | None = None, page: int = 1, page_size: int = 10) -> Page[Group]:
-        validate_page(page, page_size, maximum=100)
+        validate_page(page, page_size, maximum=2000)
         params = {"page": page, "page_size": page_size, "group_name": name}
         data = response_data(
             await self._transport.request(c.GROUP_LIST.method, c.GROUP_LIST.path, params=params), c.GROUP_LIST

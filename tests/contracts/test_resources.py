@@ -69,6 +69,11 @@ def test_resource_namespaces_cover_verified_endpoints() -> None:
     assert "/api/v2/browser-profile/update-patch" in seen
 
 
+def test_health_status_accepts_a_success_envelope_without_data() -> None:
+    with AdsPowerClient(transport=httpx.MockTransport(lambda request: httpx.Response(200, json={"code": 0, "msg": "success"}))) as client:
+        assert client.health.status() == {"code": 0, "message": "success"}
+
+
 @pytest.mark.parametrize(
     "config",
     [

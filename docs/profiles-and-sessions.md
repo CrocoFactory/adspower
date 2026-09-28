@@ -22,7 +22,7 @@ page = client.profiles.list(
     name_filter="include",
     tag_ids=["tag-id"],
     tags_filter="include",
-    page_size=200,
+    page_size=100,
 )
 for profile in client.profiles.iter_all(group_id="0"):
     print(profile.profile_id, profile.profile_no)
