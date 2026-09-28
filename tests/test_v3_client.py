@@ -12,6 +12,7 @@ from adspower.config import DEFAULT_BASE_URL, ClientConfig
 from adspower.exceptions import (
     AdsPowerAPIError,
     AdsPowerConnectionError,
+    AdsPowerResponseError,
     AdsPowerTimeoutError,
     AuthenticationError,
     ProfileNotFoundError,
@@ -365,7 +366,7 @@ def test_transport_boundary_errors(handler: object, error: type[Exception]) -> N
 
 
 def test_model_and_value_validation() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(AdsPowerResponseError):
         Profile.from_api({"name": "missing id"})
     with pytest.raises(ValueError):
         ScreenResolution.fixed(0, 1080)
