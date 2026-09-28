@@ -8,7 +8,9 @@ import pytest
 
 import adspower
 from adspower import (
+    AdsPowerAPIError,
     AdsPowerClient,
+    AdsPowerConfigurationError,
     AdsPowerRatePolicy,
     AdsPowerResponseError,
     AdsPowerValidationError,
@@ -16,7 +18,7 @@ from adspower import (
     RateLimit,
 )
 from adspower.config import ClientConfig
-from adspower.exceptions import AuthenticationError, RateLimitError
+from adspower.exceptions import AuthenticationError, ProfileNotFoundError, RateLimitError
 from adspower.transport import SyncTransport
 
 
@@ -288,3 +290,108 @@ async def test_async_playwright_cleanup_preserves_task_cancellation() -> None:
 
     with pytest.raises(asyncio.CancelledError):
         await session.close()
+
+
+def test_http_error_payloads_are_sanitized_and_business_fallbacks_are_consistent() -> None:
+    with AdsPowerClient(
+        transport=httpx.MockTransport(
+            lambda _: response({"password": "secret", "error": "boom"}, 500)
+        )
+    ) as client:
+        with pytest.raises(AdsPowerAPIError) as exc:
+            client.health.check()
+    assert exc.value.response == {
+        "status_code": 500,
+        "body": {"password": "<redacted>", "error": "boom"},
+    }
+
+    with AdsPowerClient(
+        transport=httpx.MockTransport(lambda _: httpx.Response(500, content=b"not-json"))
+    ) as client:
+        with pytest.raises(AdsPowerAPIError) as exc:
+            client.health.check()
+    assert exc.value.response == {"status_code": 500}
+
+    for message, error in [
+        ("Authentication failed", AuthenticationError),
+        ("Profile not found", ProfileNotFoundError),
+    ]:
+        with AdsPowerClient(
+            transport=httpx.MockTransport(
+                lambda _, message=message: response({"code": -1, "msg": message})
+            )
+        ) as client:
+            with pytest.raises(error):
+                client.health.check()
+
+
+def test_invalid_retry_after_is_ignored() -> None:
+    with AdsPowerClient(
+        transport=httpx.MockTransport(
+            lambda _: response({"error": "slow"}, 429, {"Retry-After": "not-a-number"})
+        )
+    ) as client:
+        with pytest.raises(RateLimitError) as exc:
+            client.health.check()
+    assert exc.value.retry_after is None
+
+
+def test_invalid_endpoint_limit_key_is_configuration_error() -> None:
+    with pytest.raises(AdsPowerConfigurationError):
+        SyncTransport(
+            ClientConfig.resolve(),
+            endpoint_limits={("GET", "/x", "extra"): RateLimit(1, 1)},  # type: ignore[dict-item]
+            transport=httpx.MockTransport(lambda _: response({"code": 0})),
+        )
+
+
+def test_browser_endpoint_configuration_validation() -> None:
+    with pytest.raises(AdsPowerConfigurationError):
+        ClientConfig.resolve(browser_endpoint_policy="invalid")  # type: ignore[arg-type]
+    with pytest.raises(AdsPowerConfigurationError):
+        ClientConfig.resolve(browser_host="http://browser.internal/path")
+
+
+def test_rate_policy_rejects_negative_profile_count() -> None:
+    with pytest.raises(ValueError):
+        AdsPowerRatePolicy.for_profile_count(-1)
+
+
+def test_browser_start_rejects_duplicate_extra_option() -> None:
+    with AdsPowerClient(
+        transport=httpx.MockTransport(lambda _: response({"code": 0, "data": {}}))
+    ) as client:
+        with pytest.raises(AdsPowerValidationError):
+            client.browsers.start(
+                "p",
+                headless=True,
+                extra_options={"headless": "0"},
+            )
+
+
+def test_proxy_serialization_rejects_conflicts_and_missing_type() -> None:
+    with AdsPowerClient(
+        transport=httpx.MockTransport(lambda _: response({"code": 0, "data": {}}))
+    ) as client:
+        with pytest.raises(AdsPowerValidationError):
+            client.proxies.create(
+                proxy_type="http",
+                host="127.0.0.1",
+                port=8080,
+                type="socks5",
+            )
+        with pytest.raises(AdsPowerValidationError):
+            client.proxies.create_many([{"host": "127.0.0.1", "port": 8080}])
+
+
+def test_browser_connection_rejects_malformed_protocol_fields() -> None:
+    with pytest.raises(AdsPowerResponseError):
+        adspower.BrowserConnection.from_api(
+            {"ws": []},
+            base_url="http://127.0.0.1:50325",
+        )
+    with pytest.raises(AdsPowerResponseError):
+        adspower.BrowserConnection.from_api(
+            {"debug_port": "not-an-int"},
+            base_url="http://127.0.0.1:50325",
+        )
