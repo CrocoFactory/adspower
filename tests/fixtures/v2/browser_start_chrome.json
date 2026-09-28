@@ -1,0 +1,1 @@
+{"code":0,"data":{"ws":{"selenium":"127.0.0.1:9222","puppeteer":"ws://127.0.0.1:9222/devtools/browser/example"},"debug_port":"9222","webdriver":"/remote/chromedriver"},"msg":"Success"}

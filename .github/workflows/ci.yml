@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python: "3.10"
+            experimental: false
+          - python: "3.11"
+            experimental: false
+          - python: "3.12"
+            experimental: false
+          - python: "3.13"
+            experimental: false
+          - python: "3.14"
+            experimental: false
+          - python: "3.15-dev"
+            experimental: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          allow-prereleases: ${{ matrix.experimental }}
+      - run: pip install poetry
+      - run: poetry install --all-extras
+      - run: poetry run pytest -m "not integration"
+
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - run: pip install poetry
+      - run: poetry install --all-extras
+      - run: poetry run ruff check adspower tests
+      - run: poetry run ruff format --check adspower tests
+      - run: poetry run pytest -m "not integration" --cov=adspower --cov-report=term-missing --cov-fail-under=90
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - run: pip install poetry
+      - run: poetry install --all-extras
+      - run: poetry run pyright adspower
+
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - run: pip install poetry twine
+      - run: poetry build
+      - run: twine check dist/*
+      - name: Verify core wheel
+        run: |
+          python -m venv /tmp/adspower-core
+          /tmp/adspower-core/bin/pip install dist/*.whl
+          cd /tmp
+          /tmp/adspower-core/bin/python -c "import adspower; assert adspower.__version__ == '3.0.0'"
+          /tmp/adspower-core/bin/pip check
+      - name: Verify optional extras
+        run: |
+          wheel=$(echo "$GITHUB_WORKSPACE"/dist/*.whl)
+          for extra in selenium playwright all; do
+            python -m venv "/tmp/adspower-${extra}"
+            "/tmp/adspower-${extra}/bin/pip" install "${wheel}[${extra}]"
+            "/tmp/adspower-${extra}/bin/pip" check
+          done
+          unzip -l "$GITHUB_WORKSPACE"/dist/*.whl | grep -F 'adspower/py.typed'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: distributions
+          path: dist/
+
+  latest-automation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - run: pip install -U "httpx<1" "selenium<5" "playwright>=1.61,<2" typing-extensions pytest pytest-asyncio
+      - run: pip install -e . --no-deps
+      - run: pytest -m "not integration" tests/automation tests/contracts
+
+  minimum-automation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: pip install "httpx==0.27.2" "selenium==4.20.0" "playwright==1.61.0" "typing-extensions==4.12.0" pytest pytest-asyncio
+      - run: pip install -e . --no-deps
+      - run: pytest -m "not integration" tests/automation tests/contracts

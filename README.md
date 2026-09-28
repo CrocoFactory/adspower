@@ -1,201 +1,155 @@
-# adspower
-                     
-<a href="https://www.adspower.com"><h1 align="center"><img src="https://raw.githubusercontent.com/CrocoFactory/adspower/main/branding/adspower/banner.png" width="300" style="border-radius:7px;"></h1><br></a>
+# AdsPower Python SDK
 
-[![Python versions](https://img.shields.io/pypi/pyversions/adspower?color=%231D4DFF)](https://pypi.org/project/adspower/)
-[![PyPi Version](https://img.shields.io/pypi/v/adspower?color=%231D4DFF)](https://pypi.org/project/adspower/)
+<p align="center">
+  <a href="https://www.adspower.com">
+    <img src="https://raw.githubusercontent.com/CrocoFactory/adspower/main/branding/adspower/banner.png" alt="AdsPower Python SDK" width="720">
+  </a>
+</p>
 
+<p align="center">
+  <a href="https://github.com/CrocoFactory/adspower/actions/workflows/ci.yml?query=branch%3Amain"><img src="https://github.com/CrocoFactory/adspower/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
+  <a href="https://pypi.org/project/adspower/"><img src="https://img.shields.io/pypi/v/adspower?color=1d4dff" alt="PyPI version"></a>
+  <a href="https://pypi.org/project/adspower/"><img src="https://img.shields.io/pypi/pyversions/adspower?color=1d4dff" alt="Python versions"></a>
+  <a href="https://github.com/CrocoFactory/adspower/blob/main/LICENSE"><img src="https://img.shields.io/github/license/CrocoFactory/adspower" alt="License"></a>
+</p>
 
-The package for interacting with API of anti-detect browser [AdsPower](https://www.adspower.com).
+Typed synchronous and asynchronous clients for AdsPower Local API. The SDK
+covers profile, proxy and tag operations plus Selenium and Playwright browser
+attachment. It preserves the server response envelope and does not forward an
+AdsPower API key to CDP, WebDriver, or browser-version probes.
 
-- **[Overview](#quick-start)**
-- **[Installing](#installing-adspower)**
-- **[Bug reports](https://github.com/CrocoFactory/adspower/issues)**
+## Capabilities
 
-The project is made by the **[Croco Factory](https://github.com/CrocoFactory)** team
+- Manage profiles, groups, proxies, tags, categories and browser kernels.
+- Start and stop AdsPower browser profiles.
+- Attach Selenium, sync Playwright, or async Playwright to a running profile.
+- Use the same resource-oriented API in synchronous and asynchronous code.
+- Configure timeouts, networking and request-rate policies.
 
-adspower's source code is made available under the [MIT License](LICENSE)
-         
-## Features
-- Synchronous and asynchronous interaction with the local API
-- Interaction with the most popular libraries for browser automation in Python: Selenium and Playwright
+## Requirements
 
-## Restrictions
-1. During using the package, AdsPower must be opened. 
-2. The local API is available only in paid AdsPower subscriptions
-3. AdsPower has frequency control for all APIs, max. access frequency: 1 request/second 
+- Python 3.10–3.15.
+- AdsPower running with Local API enabled.
+- An API key when the Local API installation requires one.
+- Selenium and/or Playwright only for browser automation.
 
+## Installation
 
-## Quick start
-
-*Example of interacting with synchronous API.*
-
-```python
-from adspower.sync_api import Group, ProfileAPI
-group = Group.create(name='my_group', remark='The best group ever')
-
-profile_api = ProfileAPI.create(group=group)  
-print(f'Profile {profile_api.name} was created in group {group.name}')
-```
-
-**Use `ProfileAPI` only when** you don't need `Selenium` and `Playwright` interactions.
-
-Library provides ways to interact the most popular libraries for browser automation in Python: `Selenium` and `Playwright`.
-To get a browser, you can use `with` statement:
-
-- *Selenium*
-
-```python
-from adspower.sync_api.selenium import Profile, Group
-my_group = Group.query(name='my_group')[0]
-profile = Profile.create(group=my_group, name='my_profile')
-
-with profile as browser:
-   browser.get('https://github.com/blnkoff/adspower')
-```
-
-- *Playwright*
-
-```python
-from adspower.async_api.playwright import Profile, Group
-
-async def main() -> None:
-    my_group = (await Group.query(name='my_group'))[0]
-    profile = await Profile.create(group=my_group, name='my_profile')
-    
-    async with profile as browser:
-       page = browser.pages[0]
-       await page.goto('https://github.com/blnkoff/adspower')
-```
-
-Both versions support sync and async API.
-
-Or manually call `get_browser` if you need specify part of behaviour.
-```python
-from adspower.sync_api.selenium import Profile, Group
-
-my_group = Group.query(name='my_group')[0]
-profile = Profile.create(group=my_group, name='my_profile')
-browser = profile.get_browser(ip_tab=False, headless=True, disable_password_filling=True)
-browser.get('https://github.com/blnkoff/adspower')
-profile.quit()
-```
-
-Notice that you must not call quitting methods of `Playwright` library or `Selenium` after `profile.quit()`, since 
-it calls these methods automatically. An attempt to do so will lead to the error.
-           
-*Example of setting proxy and fingerprint*
-
-```python
-from adspower.sync_api.playwright import Profile, Group
-from adspower import ProxyConfig, FingerprintConfig
-
-proxy = ProxyConfig(
-    soft='other',
-    type='http',
-    host='xx.xx.x.xx',
-    port=1000,
-    user='username',
-    password='password'
-)
-
-fingerprint = FingerprintConfig(
-    ua='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.112 Safari/537.36'
-)
-
-group = Group.query(name='my_group')[0]
-profile = Profile.create(group=group, proxy_config=proxy, name='my_profile', fingerprint_config=fingerprint)
-```
-
-There are extension categories, implemented as `Category` class. At the moment, it can`t be created, but can be retrieved.
-You can manually create extension category and used it for profile creation using API.
-  
-*Example of querying category* 
-
-```python
-from adspower.sync_api.playwright import Profile, Category, Group
-
-category = Category.query(name='my_category')[0]
-group = Group.query(name='my_group')[0]
-
-profile = Profile.create(group=group, category=category)
-```
-
-You can create anonymous profile that is deleted after last statement in context manager.
-   
-*Example of anonymous profile*
-```python
-from adspower.async_api.playwright import Profile, Group
-
-async def main() -> None:
-    my_group = (await Group.query(name='my_group'))[0]
-    profile = await Profile.anonymous(group=my_group)
-
-    async with profile as browser:
-        page = browser.pages[0]
-        await page.goto('https://www.google.com')
-```
-
-Each API entity, such as Profile, Group and Category, pretty formatted, can be compared and converted to dict
-     
-*Example 1*
-
-```python
-from adspower.sync_api.playwright import Category
-
-category = Category.query(name='my_category')[0]
-print(category) 
-```
-
-```markdown
-Category(id=10515; name=my_category)
-```
-  
-*Example 2*
-
-```python
-from adspower.sync_api.playwright import Profile, Group
-
-group = Group.query(name='my_group')[0]
-profile_created = Profile.create(group=group)
-
-profile_queried = Profile.query(id_=profile_created.id)
-print(profile_queried == profile_created)
-```
-
-```python
-True
-```
-
-*Example 3*
-```python
-from adspower.sync_api.playwright import Category
-
-category = Category.query(name='my_category')[0]
-print(category.to_dict())
-```
-
-```json
-{
-    "id": 10515, 
-    "name": "my_category", 
-    "remark": "category remark"
-}
-```
-
-# Installing adspower
-To install the package from PyPi you can use that:
-
-```sh
+```bash
 pip install adspower
+pip install 'adspower[selenium]'
+pip install 'adspower[playwright]'
+pip install 'adspower[all]'
 ```
 
-You will probably want to use the pacakge with `Selenium` or `Playwright`. You can install it as extra-package:
+## Agent skill
 
-```sh
-pip install adspower[playwright]
+This repository includes the `adspower-python` skill for agents that write,
+review, debug, or migrate code using this SDK. It captures the v3 API surface,
+browser lifecycle, pagination, topology, rate-limit, and safety conventions.
+
+Install it with:
+
+```bash
+npx skills add https://github.com/CrocoFactory/adspower/tree/master/skills/adspower-python
 ```
 
-```sh
-pip install adspower[selenium]
+## Quick start: Selenium
+
+```python
+from adspower import AdsPowerClient, AdsPowerRatePolicy
+
+with AdsPowerClient(
+    base_url="http://127.0.0.1:50325",
+    api_key="your-api-key",
+    rate_policy=AdsPowerRatePolicy.for_profile_count(200),
+) as client:
+    created = client.profiles.create(name="example")
+
+    with client.browsers.session(created.profile_id, headless=True) as session:
+        with session.selenium() as driver:
+            driver.get("https://example.com")
+            print(driver.title)
+
+    client.profiles.delete(created.profile_id)
 ```
+
+`BrowserSession` owns the AdsPower browser lifecycle. Exiting the session stops
+the profile even if an attached driver raises an exception.
+
+## Quick start: async Playwright
+
+```python
+import asyncio
+
+from adspower import AdsPowerRatePolicy, AsyncAdsPowerClient
+
+
+async def main() -> None:
+    async with AsyncAdsPowerClient(
+        api_key="your-api-key",
+        rate_policy=AdsPowerRatePolicy.conservative(),
+    ) as client:
+        async with await client.browsers.session("profile-id", headless=True) as session:
+            async with session.playwright() as browser:
+                context = browser.contexts[0]
+                page = context.pages[0] if context.pages else await context.new_page()
+                await page.goto("https://example.com")
+                print(await page.title())
+
+
+asyncio.run(main())
+```
+
+By default, browser endpoints are used exactly as AdsPower returns them. This
+avoids CDP WebSocket host-header failures on Local API installations. For a
+remote or Docker topology where AdsPower returns unreachable loopback endpoints,
+opt into `browser_endpoint_policy="rewrite_loopback_to_api_host"`; see
+[configuration](docs/configuration.md).
+
+## Profiles, proxies, and pagination
+
+```python
+from adspower import StoredProxyConfig
+
+page = client.profiles.list(
+    name="shop",
+    name_filter="include",
+    tag_ids=["tag-id"],
+    tags_filter="include",
+    page_size=100,  # AdsPower V2 allows 1–100
+)
+
+proxy_ids = client.proxies.create_many(
+    [StoredProxyConfig("http", "127.0.0.1", 8080, remark="example")]
+)
+
+for profile in client.profiles.iter_all(group_id="0"):
+    print(profile.profile_id)
+```
+
+`groups.list()` accepts pages up to 2000; `proxies.create_many()` accepts up to
+500 proxy definitions. `AdsPowerRatePolicy` applies the documented 1 req/s
+limits to profile/group listings, cookies, and UA generation in addition to the
+global rate limit.
+
+## Raw API
+
+```python
+envelope = client.raw.request("POST", "/api/v2/future-endpoint", json={"x": 1})
+```
+
+Raw paths must be root-relative. Absolute URLs are rejected so the Local API
+authorization header cannot be sent to another host.
+
+## Documentation
+
+- [Configuration and topology](docs/configuration.md)
+- [Profiles and browser sessions](docs/profiles-and-sessions.md)
+- [Automation adapters](docs/automation.md)
+- [Local API reference](docs/local-api-contract.md)
+- [API overview](docs/api-coverage.md)
+- [Errors](docs/errors.md)
+- [Migration 2.x → 3.x](docs/migration-2-to-3.md)
+
+See the [MIT License](LICENSE).

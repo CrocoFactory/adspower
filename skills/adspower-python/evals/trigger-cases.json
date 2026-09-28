@@ -1,0 +1,28 @@
+{
+  "skill": "adspower-python",
+  "purpose": "Trigger-quality cases. Positive cases should activate the skill; negative cases are realistic near-misses that should not.",
+  "positive": [
+    "Write Python using adspower v3 to open profile 42 with Playwright, visit a URL, and close it safely.",
+    "Is AdsPowerClient.browsers.session supported in v3, or must I call start(), and how should its lifecycle be managed?",
+    "Migrate this old CrocoFactory/adspower 2.x profile automation to the new v3 API.",
+    "I need an async Python worker that reuses 30 AdsPower profiles without violating Local API rate limits.",
+    "Using the adspower Python package, create a stored proxy, assign it to a profile, start the browser, then delete the temporary profile.",
+    "AdsPower Local API works on the host but Playwright CDP fails from Docker. How should I configure this SDK?",
+    "Review this Python code that loops client.profiles.list() and deletes every returned profile. Is pagination handled correctly?",
+    "The AdsPower endpoint I need was added recently and this Python SDK has no typed wrapper yet. Show the safe raw fallback.",
+    "What AdsPower exceptions should my Python service catch for 401, 429, timeout, and malformed response?",
+    "Build a Python workflow that finds all profiles in an AdsPower group and automates each one with the existing persistent cookies."
+  ],
+  "negative": [
+    "How do I install the official adspower-browser CLI and run `adspower profile list`?",
+    "Configure the AdsPower MCP server for Claude Desktop.",
+    "Write a normal Playwright test for my website; I am not using AdsPower.",
+    "Compare AdsPower and GoLogin pricing for a social media agency.",
+    "How do I buy an AdsPower subscription?",
+    "Explain what browser fingerprinting is in general.",
+    "Use Selenium to automate Chrome with a regular local ChromeDriver, no AdsPower.",
+    "Create an Agent Skill for the official AdsPower CLI/MCP repository, not the CrocoFactory Python SDK.",
+    "Summarize AdsPower's marketing page about affiliate use cases.",
+    "Send an HTTP request with Python requests to an unrelated REST API."
+  ]
+}

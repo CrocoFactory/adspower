@@ -1,0 +1,38 @@
+name: AdsPower integration
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  real-browser:
+    runs-on: [self-hosted, adspower]
+    timeout-minutes: 30
+    env:
+      ADSPOWER_INTEGRATION: "1"
+      ADSPOWER_BASE_URL: ${{ secrets.ADSPOWER_BASE_URL }}
+      ADSPOWER_API_KEY: ${{ secrets.ADSPOWER_API_KEY }}
+      ADSPOWER_REQUIRE_PROXY_INTEGRATION: "1"
+      ADSPOWER_REQUIRE_HIGH_IMPACT: "1"
+      ADSPOWER_HIGH_IMPACT_INTEGRATION: ${{ secrets.ADSPOWER_HIGH_IMPACT_INTEGRATION }}
+      ADSPOWER_TEST_SHARE_RECEIVER: ${{ secrets.ADSPOWER_TEST_SHARE_RECEIVER }}
+      ADSPOWER_TEST_KERNEL_TYPE: ${{ secrets.ADSPOWER_TEST_KERNEL_TYPE }}
+      ADSPOWER_TEST_KERNEL_VERSION: ${{ secrets.ADSPOWER_TEST_KERNEL_VERSION }}
+      ADSPOWER_TEST_PATCH_CHANNEL: ${{ secrets.ADSPOWER_TEST_PATCH_CHANNEL }}
+      ADSPOWER_TEST_PROFILE_ID: ${{ secrets.ADSPOWER_TEST_PROFILE_ID }}
+      ADSPOWER_TEST_GROUP_ID: ${{ secrets.ADSPOWER_TEST_GROUP_ID }}
+      ADSPOWER_TEST_PROXY_TYPE: ${{ secrets.ADSPOWER_TEST_PROXY_TYPE }}
+      ADSPOWER_TEST_PROXY_HOST: ${{ secrets.ADSPOWER_TEST_PROXY_HOST }}
+      ADSPOWER_TEST_PROXY_PORT: ${{ secrets.ADSPOWER_TEST_PROXY_PORT }}
+      ADSPOWER_TEST_PROXY_USER: ${{ secrets.ADSPOWER_TEST_PROXY_USER }}
+      ADSPOWER_TEST_PROXY_PASSWORD: ${{ secrets.ADSPOWER_TEST_PROXY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - run: pip install poetry
+      - run: poetry install --all-extras
+      - run: poetry run pytest -m integration -W error::ResourceWarning

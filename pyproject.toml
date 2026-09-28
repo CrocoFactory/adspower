@@ -1,45 +1,82 @@
-[tool.poetry]
+[project]
 name = 'adspower'
-version = '2.1.0'
-description = 'The package for interacting with API of anti-detect browser AdsPower.'
-authors = ['Alexey <axbelenkov@gmail.com>']
+version = '3.0.0'
+description = 'Typed synchronous and asynchronous Python SDK for the AdsPower Local API.'
+authors = [{ name = 'Alexey', email = 'axbelenkov@gmail.com' }]
 license = 'MIT'
 readme = 'README.md'
-repository = 'https://github.com/CrocoFactory/adspower'
-homepage = 'https://github.com/CrocoFactory/adspower'
+requires-python = '>=3.10,<3.16'
+keywords = ['adspower', 'browser automation', 'local api', 'playwright', 'selenium']
+dependencies = [
+    'httpx>=0.27.2,<1.0',
+    'typing-extensions>=4.12',
+]
 classifiers = [
     'Development Status :: 5 - Production/Stable',
     'Intended Audience :: Developers',
+    'Topic :: Internet :: WWW/HTTP',
     'Topic :: Software Development :: Libraries :: Python Modules',
+    'Programming Language :: Python :: 3',
     'Programming Language :: Python :: 3 :: Only',
-    'Programming Language :: Python :: 3.9',
     'Programming Language :: Python :: 3.10',
     'Programming Language :: Python :: 3.11',
     'Programming Language :: Python :: 3.12',
-    'License :: OSI Approved :: MIT License',
+    'Programming Language :: Python :: 3.13',
+    'Programming Language :: Python :: 3.14',
+    'Programming Language :: Python :: 3.15',
+    'Programming Language :: Python :: Implementation :: CPython',
     'Operating System :: OS Independent',
-    'License :: OSI Approved :: MIT License',
     'Typing :: Typed'
 ]
+
+[project.optional-dependencies]
+selenium = ['selenium>=4.20,<5']
+playwright = ['playwright>=1.61,<2']
+all = ['selenium>=4.20,<5', 'playwright>=1.61,<2']
+
+[project.urls]
+Homepage = 'https://github.com/CrocoFactory/adspower'
+Repository = 'https://github.com/CrocoFactory/adspower'
+Documentation = 'https://github.com/CrocoFactory/adspower/tree/main/docs'
+'Issue Tracker' = 'https://github.com/CrocoFactory/adspower/issues'
+
+[tool.poetry]
 packages = [{ include = 'adspower' }]
 
-[tool.poetry.dependencies]
-python = '^3.9'
-httpx = "^0.27.0"
-selenium = {version = "^4.16.0", optional = true}
-playwright = {version = "^1.42.0", optional = true}
-
-[tool.poetry.extras]
-selenium = ["selenium"]
-playwright = ["playwright"]
-
 [tool.poetry.group.dev.dependencies]
-pytest = "^7.4.3"
-twine = "^4.0.2"
-build = "^1.0.3"
-faker = "^24.9.0"
-pytest-asyncio = "^0.23.6"
+pytest = ">=8,<10"
+twine = ">=5,<7"
+build = ">=1.2,<2"
+pytest-asyncio = ">=0.23,<2"
+pytest-cov = ">=5,<8"
+ruff = ">=0.8,<1"
+pyright = ">=1.1.400,<2"
 
 [build-system]
 requires = ['poetry-core']
 build-backend = 'poetry.core.masonry.api'
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+markers = [
+    "integration: requires a real AdsPower installation",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/__init__.py" = ["F401"]
+
+[tool.pyright]
+pythonVersion = "3.10"
+typeCheckingMode = "standard"
+
+[tool.coverage.run]
+source = ["adspower"]
+branch = true
