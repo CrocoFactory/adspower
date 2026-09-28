@@ -131,11 +131,14 @@ def test_protocol_misc_branches() -> None:
         allow_plain_object=True,
     ).data == {"status": "ok"}
 
-    assert decode_response(
-        httpx.Response(200, json={"code": "0", "msg": None}, request=request),
-        method="GET",
-        path="/x",
-    ).message == ""
+    assert (
+        decode_response(
+            httpx.Response(200, json={"code": "0", "msg": None}, request=request),
+            method="GET",
+            path="/x",
+        ).message
+        == ""
+    )
 
     with pytest.raises(AdsPowerProtocolError):
         decode_response(
@@ -225,9 +228,7 @@ def test_config_environment_and_client_validation(monkeypatch: pytest.MonkeyPatc
 
 @pytest.mark.asyncio
 async def test_async_profile_list_validation_edges() -> None:
-    async with AsyncAdsPowerClient(
-        transport=httpx.MockTransport(lambda request: ok({"list": []}))
-    ) as client:
+    async with AsyncAdsPowerClient(transport=httpx.MockTransport(lambda request: ok({"list": []}))) as client:
         with pytest.raises(AdsPowerValidationError):
             await client.profiles.list(page="one")
         with pytest.raises(AdsPowerValidationError):
