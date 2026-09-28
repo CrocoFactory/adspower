@@ -14,9 +14,11 @@ AdsPowerError
 └── AdsPowerNotFoundError
 ```
 
-Authentication is classified from reliable HTTP 401/403 signals, rate limiting
-from HTTP 429, and other business-envelope failures remain
-`AdsPowerAPIError`. The SDK never classifies errors by English message
-substrings. A successful transport with malformed JSON/envelope/domain fields
-raises `AdsPowerProtocolError`. Convenience lookup misses raise
-`AdsPowerNotFoundError`. Native Selenium/Playwright runtime errors stay native.
+`AdsPowerAuthenticationError` represents HTTP 401/403 responses and
+`AdsPowerRateLimitError` represents HTTP 429. Other Local API failures raise
+`AdsPowerAPIError`.
+
+`AdsPowerProtocolError` means a response could not be interpreted as the
+expected Local API data. `AdsPowerNotFoundError` is raised by convenience lookup
+methods when no matching resource exists. Selenium and Playwright errors remain
+their native exception types.

@@ -18,26 +18,13 @@ covers profile, proxy and tag operations plus Selenium and Playwright browser
 attachment. It preserves the server response envelope and does not forward an
 AdsPower API key to CDP, WebDriver, or browser-version probes.
 
-## What is verified
+## Capabilities
 
-The current v3 implementation has deterministic contract tests and a live Local
-API test pass. The live pass exercised temporary, automatically deleted profiles,
-proxies and tags; it covered:
-
-- sync and async profile CRUD, filtering, move, cookies, UA, fingerprint and cache operations;
-- sync and async proxy and tag CRUD;
-- health, groups, categories and kernel listing;
-- browser start, status, opened-browser listing, cloud-status and stop;
-- Selenium, sync Playwright, async Playwright, and async cancellation cleanup.
-
-The checked non-integration suite has a 90% coverage gate. A real AdsPower
-installation can still differ by app version, account permissions, installed
-browser kernels, or network topology. Read the [Local API contract](docs/local-api-contract.md)
-before treating an endpoint as version-independent.
-
-Operations that affect an entire AdsPower installation or another account are
-intentionally not part of the disposable live test: `stop_all`, profile sharing,
-kernel download and app update. Run those only on a dedicated test installation.
+- Manage profiles, groups, proxies, tags, categories and browser kernels.
+- Start and stop AdsPower browser profiles.
+- Attach Selenium, sync Playwright, or async Playwright to a running profile.
+- Use the same resource-oriented API in synchronous and asynchronous code.
+- Configure timeouts, networking and request-rate policies.
 
 ## Requirements
 
@@ -148,26 +135,9 @@ authorization header cannot be sent to another host.
 - [Configuration and topology](docs/configuration.md)
 - [Profiles and browser sessions](docs/profiles-and-sessions.md)
 - [Automation adapters](docs/automation.md)
-- [Local API contract and release gates](docs/local-api-contract.md)
-- [API coverage](docs/api-coverage.md)
+- [Local API reference](docs/local-api-contract.md)
+- [API overview](docs/api-coverage.md)
 - [Errors](docs/errors.md)
 - [Migration 2.x → 3.x](docs/migration-2-to-3.md)
-
-## Development checks
-
-```bash
-poetry install --all-extras
-poetry run pytest -m 'not integration' --cov=adspower --cov-fail-under=90
-poetry run ruff check adspower tests
-poetry run pyright adspower
-poetry build
-poetry run twine check dist/*
-```
-
-Live tests are opt-in and require a disposable AdsPower profile:
-
-```bash
-ADSPOWER_INTEGRATION=1 ADSPOWER_TEST_PROFILE_ID=profile-id poetry run pytest -m integration
-```
 
 See the [MIT License](LICENSE).

@@ -40,15 +40,11 @@ container topology where those loopback endpoints are not reachable, opt into
 `browser_endpoint_policy="rewrite_loopback_to_api_host"` and, when needed,
 set `browser_host` to the reachable address.
 
-These are configuration mechanisms, not proof that a particular Docker or
-two-host deployment works. Stable release claims require the live topology gate.
-
 ## Rate limiting
 
-Rate limiting is client-side and cannot reproduce AdsPower's undisclosed server
-algorithm. A global limit and endpoint limits are cumulative and are reserved
-together at dispatch. Separate clients/processes do not coordinate unless the
-same limiter is shared. Mutating requests are never retried automatically.
+Rate limiting is client-side. A global limit and endpoint limits are cumulative.
+Separate clients or processes use separate limits, and mutating requests are not
+retried automatically.
 
 ```python
 from adspower import AdsPowerClient, AdsPowerRatePolicy
@@ -58,7 +54,6 @@ client = AdsPowerClient(
 )
 ```
 
-`AdsPowerRatePolicy` applies AdsPower's published 1 req/s limits to group and
-profile listings, cookies, and user-agent generation. Only configure additional
-endpoint-specific values that are supported by first-party/live evidence for the
-AdsPower version you run.
+`AdsPowerRatePolicy` applies 1 req/s limits to group and profile listings,
+cookies, and user-agent generation. You can provide additional endpoint-specific
+limits when your AdsPower setup requires them.

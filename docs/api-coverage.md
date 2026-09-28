@@ -1,14 +1,20 @@
-# Typed Local API coverage
+# API overview
 
-The v3 client namespaces are identical for sync and async:
+The synchronous `AdsPowerClient` and asynchronous `AsyncAdsPowerClient` expose
+the same resource namespaces:
 
-`profiles`, `browsers`, `groups`, `proxies`, `categories`, `tags`,
-`kernels`, `app`, `health`, and `raw`.
+| Namespace | Use it for |
+| --- | --- |
+| `profiles` | Profile lifecycle, cookies, user agents and fingerprints |
+| `browsers` | Browser start/stop, status and automation sessions |
+| `groups` | Profile groups |
+| `proxies` | Stored proxy configurations |
+| `categories` | Extension categories |
+| `tags` | Browser profile tags |
+| `kernels` | Browser kernel information and downloads |
+| `app` | AdsPower application updates |
+| `health` | Local API availability |
+| `raw` | Root-relative requests to Local API endpoints not yet wrapped by the SDK |
 
-Typed stable coverage is derived from the pinned first-party endpoint registry
-documented in [local-api-contract.md](local-api-contract.md). `raw` is the
-forward-compatibility escape hatch; it is not a substitute for wrappers for
-stable endpoints.
-
-High-impact operations (share, stop-all, fingerprint regeneration, patch
-update, kernel download) must be explicitly enabled in live tests.
+Use the typed namespaces for common operations. `raw` is useful when you need a
+new Local API endpoint before it appears in a typed release.

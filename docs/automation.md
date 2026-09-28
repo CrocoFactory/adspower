@@ -9,16 +9,11 @@ with client.browsers.session(profile_id="...") as session:
         driver.get("https://example.com")
 ```
 
-Async Playwright follows the same ownership model. Adapter cleanup happens
-before outer-session Local API stop. Cleanup never intentionally masks an
-existing user exception, and async cancellation is not translated into an
-AdsPower exception.
+Async Playwright follows the same ownership model. Closing the adapter detaches
+automation first; closing the session then stops the AdsPower browser.
 
-Topology rewriting is separate from response parsing. Exact mode preserves
-returned endpoints. The rewrite policy changes loopback debugger/CDP hosts to
-the configured browser host/API host while preserving ports and paths. The
-remote Chromium version probe uses a short configurable timeout, follows no
-redirects and sends no AdsPower authorization header.
+By default, the SDK uses the debugger and CDP endpoints returned by AdsPower.
+For Docker or remote deployments, configure a reachable browser host and use
+the endpoint-rewrite policy described in [Configuration](configuration.md).
 
-Firefox attachment remains explicit/experimental until verified against a live
-target patch; it is never auto-selected from weak response signals.
+Firefox attachment must be selected explicitly with `browser="firefox"`.

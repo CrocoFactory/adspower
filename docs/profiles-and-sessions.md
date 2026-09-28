@@ -32,16 +32,14 @@ Known response fields are parsed strictly. Unknown fields remain available via
 typed `extra` metadata. Canonical names are `profile_id` and `profile_no`;
 there is no `id`, `number`, or intermediate-v3 compatibility property.
 
-Creation injects only the first-party no-proxy value when neither `proxyid`
-nor `user_proxy_config` is supplied. Fingerprint configuration is omitted
-unless the caller supplies it.
+When neither `proxyid` nor `user_proxy_config` is supplied, new profiles use
+AdsPower's no-proxy configuration. Fingerprint configuration is optional.
 
 ## Groups, categories, proxies and tags
 
-Paginated resources return `Page[T]` and provide `iter_all()` where the
-underlying endpoint is paginated. Current first-party limits are enforced:
-profiles 200/page, groups 100/page, categories 100/page, proxies 200/page and
-tags 200/page.
+Paginated resources return `Page[T]` and provide `iter_all()` where applicable.
+Page limits are: profiles 100, groups 2000, categories 100, proxies 200 and
+tags 200.
 
 ## Browser sessions
 
