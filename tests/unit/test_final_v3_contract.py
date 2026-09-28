@@ -121,3 +121,49 @@ def test_paginated_iterators_exist_for_all_supported_resources() -> None:
         assert callable(client.categories.iter_all)
         assert callable(client.proxies.iter_all)
         assert callable(client.tags.iter_all)
+
+
+def _paged_resource_response(request: httpx.Request) -> httpx.Response:
+    import json
+
+    if request.method == "GET":
+        page = int(request.url.params.get("page", "1"))
+    else:
+        payload = json.loads(request.content.decode()) if request.content else {}
+        page = int(payload.get("page", 1))
+
+    if page > 1:
+        return ok({"list": [], "page": page, "page_size": 1})
+
+    path = request.url.path
+    if path.endswith("/group/list"):
+        item = {"group_id": "1", "group_name": "group"}
+    elif path.endswith("/category/list"):
+        item = {"category_id": "1", "category_name": "category"}
+    elif path.endswith("/proxy-list/list"):
+        item = {"proxy_id": "1", "type": "http"}
+    elif path.endswith("/browser-tags/list"):
+        item = {"id": "1", "name": "tag"}
+    else:
+        raise AssertionError(path)
+    return ok({"list": [item], "page": 1, "page_size": 1})
+
+
+def test_sync_paginated_resource_iterators() -> None:
+    with AdsPowerClient(transport=httpx.MockTransport(_paged_resource_response)) as client:
+        assert [item.group_id for item in client.groups.iter_all(page_size=1)] == ["1"]
+        assert [item.category_id for item in client.categories.iter_all(page_size=1)] == ["1"]
+        assert [item.proxy_id for item in client.proxies.iter_all(page_size=1)] == ["1"]
+        assert [item.tag_id for item in client.tags.iter_all(page_size=1)] == ["1"]
+
+
+@pytest.mark.asyncio
+async def test_async_paginated_resource_iterators() -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return _paged_resource_response(request)
+
+    async with AsyncAdsPowerClient(transport=httpx.MockTransport(handler)) as client:
+        assert [item.group_id async for item in client.groups.iter_all(page_size=1)] == ["1"]
+        assert [item.category_id async for item in client.categories.iter_all(page_size=1)] == ["1"]
+        assert [item.proxy_id async for item in client.proxies.iter_all(page_size=1)] == ["1"]
+        assert [item.tag_id async for item in client.tags.iter_all(page_size=1)] == ["1"]
