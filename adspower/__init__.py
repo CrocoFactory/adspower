@@ -1,76 +1,64 @@
-"""Modern sync and async clients for the AdsPower Local API."""
+"""Typed sync and async clients for the AdsPower Local API."""
 
-from .async_client import AsyncAdsPowerClient, AsyncBrowserSession
-from .client import AdsPowerClient, BrowserSession
-from .config import BrowserEndpointPolicy, ClientConfig
-from .exceptions import (
+from importlib.metadata import PackageNotFoundError, version
+
+from .async_client import AsyncAdsPowerClient
+from .client import AdsPowerClient
+from .config import AdsPowerConfig, BrowserEndpointPolicy
+from .errors import (
     AdsPowerAPIError,
     AdsPowerAuthenticationError,
     AdsPowerConfigurationError,
     AdsPowerConnectionError,
     AdsPowerError,
+    AdsPowerNotFoundError,
+    AdsPowerProtocolError,
     AdsPowerRateLimitError,
-    AdsPowerResponseError,
     AdsPowerTimeoutError,
     AdsPowerTransportError,
     AdsPowerValidationError,
-    AuthenticationError,
-    ProfileNotFoundError,
-    RateLimitError,
 )
 from .models import (
     BrowserConnection,
+    BrowserKernelConfig,
     BrowserStatus,
+    BrowserTag,
     Category,
+    CloudBrowserStatus,
+    CreatedProfile,
+    FingerprintConfig,
     Group,
+    InlineProxyConfig,
+    KernelInfo,
+    MacAddressConfig,
+    MediaDevicesConfig,
+    Page,
+    PlatformAccount,
     Profile,
-    ProfileSelector,
     Proxy,
-    ProxySoftware,
+    RandomUserAgentConfig,
     RunningBrowser,
     ScreenResolution,
+    WebGLConfig,
+    WebGPUConfig,
 )
+from .models.proxies import StoredProxyConfig
 from .rate_limit import AdsPowerRatePolicy, RateLimit
-from .types import AdsPowerBool, CacheType, FingerprintConfig, ProfileProxyType, ProxyConfig, StoredProxyType
+from .resources import AsyncBrowserSession, BrowserSession, TagCreate, TagUpdate
 
-__version__ = "3.0.0"
+try:
+    __version__ = version("adspower")
+except PackageNotFoundError:
+    __version__ = "3.0.0"
 
 __all__ = [
-    "AdsPowerAPIError",
-    "AdsPowerAuthenticationError",
-    "AdsPowerClient",
-    "AdsPowerConfigurationError",
-    "AdsPowerConnectionError",
-    "AdsPowerError",
-    "AdsPowerRateLimitError",
-    "AdsPowerRatePolicy",
-    "AdsPowerResponseError",
-    "AdsPowerTimeoutError",
-    "AdsPowerTransportError",
-    "AdsPowerValidationError",
-    "AsyncAdsPowerClient",
-    "AsyncBrowserSession",
-    "AuthenticationError",
-    "BrowserConnection",
-    "BrowserEndpointPolicy",
-    "BrowserSession",
-    "BrowserStatus",
-    "CacheType",
-    "Category",
-    "ClientConfig",
-    "FingerprintConfig",
-    "Group",
-    "Profile",
-    "ProfileNotFoundError",
-    "ProfileProxyType",
-    "ProfileSelector",
-    "Proxy",
-    "ProxyConfig",
-    "ProxySoftware",
-    "RateLimit",
-    "RateLimitError",
-    "RunningBrowser",
-    "ScreenResolution",
-    "StoredProxyType",
-    "AdsPowerBool",
+    "AdsPowerAPIError", "AdsPowerAuthenticationError", "AdsPowerClient", "AdsPowerConfig",
+    "AdsPowerConfigurationError", "AdsPowerConnectionError", "AdsPowerError", "AdsPowerNotFoundError",
+    "AdsPowerProtocolError", "AdsPowerRateLimitError", "AdsPowerRatePolicy", "AdsPowerTimeoutError",
+    "AdsPowerTransportError", "AdsPowerValidationError", "AsyncAdsPowerClient", "AsyncBrowserSession",
+    "BrowserConnection", "BrowserEndpointPolicy", "BrowserKernelConfig", "BrowserSession", "BrowserStatus",
+    "BrowserTag", "Category", "CloudBrowserStatus", "CreatedProfile", "FingerprintConfig", "Group",
+    "InlineProxyConfig", "KernelInfo", "MacAddressConfig", "MediaDevicesConfig", "Page", "PlatformAccount",
+    "Profile", "Proxy", "RandomUserAgentConfig", "RateLimit", "RunningBrowser", "ScreenResolution",
+    "StoredProxyConfig", "TagCreate", "TagUpdate", "WebGLConfig", "WebGPUConfig", "__version__",
 ]

@@ -8,13 +8,13 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Awaitable, Callable
 
+from .errors import AdsPowerConfigurationError
+
 EndpointLimitKey = str | tuple[str, str]
 
 
 @dataclass(frozen=True, slots=True)
 class RateLimit:
-    """A rolling-window client-side request budget."""
-
     requests: int = 2
     period: float = 1.0
 
@@ -25,89 +25,117 @@ class RateLimit:
 
 @dataclass(frozen=True, slots=True)
 class AdsPowerRatePolicy:
-    """AdsPower-specific client-side limits derived from documented public limits.
-
-    This policy is a compliance guard only. AdsPower does not document its
-    internal server-side window/token-bucket algorithm, and separate SDK clients
-    or processes do not coordinate their in-memory budgets.
-    """
+    """Client-side compliance limits; not AdsPower's undisclosed server algorithm."""
 
     global_limit: RateLimit
     endpoint_limits: Mapping[EndpointLimitKey, RateLimit] = field(default_factory=dict)
 
     @classmethod
     def conservative(cls) -> "AdsPowerRatePolicy":
-        """Return the documented lowest global tier plus verified endpoint exceptions."""
-        return cls(
-            global_limit=RateLimit(2, 1.0),
-            endpoint_limits={"/api/v2/browser-profile/cookies": RateLimit(1, 1.0)},
-        )
+        return cls(global_limit=RateLimit(2, 1.0))
 
     @classmethod
     def for_profile_count(cls, profile_count: int) -> "AdsPowerRatePolicy":
-        """Build the documented 2/5/10 requests-per-second tier for a profile count."""
         if profile_count < 0:
             raise ValueError("profile_count must be >= 0")
         requests = 2 if profile_count <= 200 else 5 if profile_count <= 5000 else 10
-        return cls(
-            global_limit=RateLimit(requests, 1.0),
-            endpoint_limits={"/api/v2/browser-profile/cookies": RateLimit(1, 1.0)},
-        )
+        return cls(global_limit=RateLimit(requests, 1.0))
+
+
+def _normalize_limits(
+    limits: Mapping[EndpointLimitKey, RateLimit] | None,
+) -> dict[tuple[str | None, str], RateLimit]:
+    result: dict[tuple[str | None, str], RateLimit] = {}
+    for key, limit in (limits or {}).items():
+        if isinstance(key, tuple):
+            if len(key) != 2:
+                raise AdsPowerConfigurationError("endpoint limit tuple must be (method, path)")
+            method, path = key
+            result[(method.upper(), path)] = limit
+        else:
+            result[(None, key)] = limit
+    return result
+
+
+class _Budget:
+    def __init__(self, limit: RateLimit) -> None:
+        self.limit = limit
+        self.timestamps: deque[float] = deque()
+
+    def prune(self, now: float) -> None:
+        while self.timestamps and now - self.timestamps[0] >= self.limit.period:
+            self.timestamps.popleft()
+
+    def wait(self, now: float) -> float:
+        self.prune(now)
+        if len(self.timestamps) < self.limit.requests:
+            return 0.0
+        return max(0.0, self.limit.period - (now - self.timestamps[0]))
+
+    def reserve(self, now: float) -> None:
+        self.prune(now)
+        self.timestamps.append(now)
 
 
 class SyncRateLimiter:
-    """Thread-safe rolling-window limiter for synchronous clients."""
+    """Atomically reserve global and endpoint budgets at dispatch time."""
 
     def __init__(
         self,
-        limit: RateLimit,
+        global_limit: RateLimit | None,
+        endpoint_limits: Mapping[EndpointLimitKey, RateLimit] | None = None,
         *,
         clock: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
-        self.limit = limit
+        self._global = _Budget(global_limit) if global_limit else None
+        self._endpoints = {key: _Budget(limit) for key, limit in _normalize_limits(endpoint_limits).items()}
         self._clock = clock
         self._sleep = sleep
-        self._timestamps: deque[float] = deque()
         self._lock = threading.Lock()
 
-    def acquire(self) -> None:
+    def acquire(self, method: str, path: str) -> None:
         with self._lock:
+            endpoint = self._endpoints.get((method.upper(), path)) or self._endpoints.get((None, path))
+            budgets = [budget for budget in (self._global, endpoint) if budget is not None]
+            if not budgets:
+                return
             now = self._clock()
-            while self._timestamps and now - self._timestamps[0] >= self.limit.period:
-                self._timestamps.popleft()
-            if len(self._timestamps) >= self.limit.requests:
-                self._sleep(max(0.0, self.limit.period - (now - self._timestamps[0])))
+            delay = max((budget.wait(now) for budget in budgets), default=0.0)
+            if delay:
+                self._sleep(delay)
                 now = self._clock()
-                while self._timestamps and now - self._timestamps[0] >= self.limit.period:
-                    self._timestamps.popleft()
-            self._timestamps.append(self._clock())
+            for budget in budgets:
+                budget.reserve(now)
 
 
 class AsyncRateLimiter:
-    """Coroutine-safe rolling-window limiter for asynchronous clients."""
+    """Async equivalent of SyncRateLimiter with identical reservation semantics."""
 
     def __init__(
         self,
-        limit: RateLimit,
+        global_limit: RateLimit | None,
+        endpoint_limits: Mapping[EndpointLimitKey, RateLimit] | None = None,
         *,
         clock: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
     ) -> None:
-        self.limit = limit
+        self._global = _Budget(global_limit) if global_limit else None
+        self._endpoints = {key: _Budget(limit) for key, limit in _normalize_limits(endpoint_limits).items()}
         self._clock = clock
         self._sleep = sleep
-        self._timestamps: deque[float] = deque()
         self._lock = asyncio.Lock()
 
-    async def acquire(self) -> None:
+    async def acquire(self, method: str, path: str) -> None:
         async with self._lock:
+            endpoint = self._endpoints.get((method.upper(), path)) or self._endpoints.get((None, path))
+            budgets = [budget for budget in (self._global, endpoint) if budget is not None]
+            if not budgets:
+                return
             now = self._clock()
-            while self._timestamps and now - self._timestamps[0] >= self.limit.period:
-                self._timestamps.popleft()
-            if len(self._timestamps) >= self.limit.requests:
-                await self._sleep(max(0.0, self.limit.period - (now - self._timestamps[0])))
+            delay = max((budget.wait(now) for budget in budgets), default=0.0)
+            if delay:
+                await self._sleep(delay)
                 now = self._clock()
-                while self._timestamps and now - self._timestamps[0] >= self.limit.period:
-                    self._timestamps.popleft()
-            self._timestamps.append(self._clock())
+            for budget in budgets:
+                budget.reserve(now)
