@@ -235,7 +235,7 @@ def build_browser_start_payload(
     if normalized_launch_args:
         payload["launch_args"] = normalized_launch_args
 
-    typed_flags = {
+    typed_flags: dict[str, bool | AdsPowerBool | None] = {
         "last_opened_tabs": last_opened_tabs,
         "proxy_detection": proxy_detection,
         "password_filling": password_filling,
