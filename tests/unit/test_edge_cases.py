@@ -81,7 +81,9 @@ def test_common_validation_and_page_protocol_edges() -> None:
     with pytest.raises(AdsPowerValidationError):
         validate_page(1, 11, maximum=10)
 
-    parser = lambda item: item
+    def parser(item: object) -> object:
+        return item
+
     assert parse_page(
         [{"x": 1}],
         item_keys=("items",),
