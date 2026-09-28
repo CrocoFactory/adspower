@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-
 import httpx
 import pytest
 
@@ -12,6 +10,7 @@ from adspower import (
     AdsPowerConfigurationError,
     AdsPowerProtocolError,
     AdsPowerRateLimitError,
+    AdsPowerValidationError,
     FingerprintConfig,
     InlineProxyConfig,
     MacAddressConfig,
@@ -127,11 +126,11 @@ def test_config_models_validate_and_serialize() -> None:
     assert ScreenResolution.fixed(1280, 720) == "1280_720"
     with pytest.raises(ValueError):
         ScreenResolution.fixed(0, 720)
-    with pytest.raises(Exception):
+    with pytest.raises(AdsPowerValidationError):
         WebGLConfig("", "renderer")
-    with pytest.raises(Exception):
+    with pytest.raises(AdsPowerValidationError):
         MediaDevicesConfig(0, 1, 1)
-    with pytest.raises(Exception):
+    with pytest.raises(AdsPowerValidationError):
         MacAddressConfig("custom")
 
     proxy = InlineProxyConfig.no_proxy()

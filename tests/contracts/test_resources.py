@@ -5,7 +5,13 @@ import json
 import httpx
 import pytest
 
-from adspower import AdsPowerClient, StoredProxyConfig, TagCreate, TagUpdate
+from adspower import (
+    AdsPowerClient,
+    AdsPowerValidationError,
+    StoredProxyConfig,
+    TagCreate,
+    TagUpdate,
+)
 
 
 def request_json(request: httpx.Request) -> object:
@@ -79,7 +85,7 @@ def test_stored_proxy_config_serialization(config: StoredProxyConfig) -> None:
 
 
 def test_stored_proxy_validation() -> None:
-    with pytest.raises(Exception):
+    with pytest.raises(AdsPowerValidationError):
         StoredProxyConfig("http", "", 80)
-    with pytest.raises(Exception):
+    with pytest.raises(AdsPowerValidationError):
         StoredProxyConfig("http", "host", 99999)

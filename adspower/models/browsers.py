@@ -3,7 +3,15 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
-from .._json import JsonValue, collect_extra, first_present, optional_int, optional_string, require_id_string, require_object
+from .._json import (
+    JsonValue,
+    collect_extra,
+    first_present,
+    optional_int,
+    optional_string,
+    require_id_string,
+    require_object,
+)
 from ..errors import AdsPowerProtocolError
 
 
@@ -54,9 +62,24 @@ def parse_browser_connection(value: object) -> BrowserConnection:
     selenium_s = optional_string(selenium, field="ws.selenium")
     playwright_s = optional_string(playwright, field="ws.puppeteer")
     debug_port = optional_int(data.get("debug_port"), field="debug_port")
-    if selenium_s is None and debug_port is None and playwright_s is None and data.get("marionette_port") is None:
-        raise AdsPowerProtocolError("browser start response does not contain a usable connection endpoint")
-    known = {"ws", "debug_port", "webdriver", "selenium", "playwright_cdp", "marionette_port", "marionette_host"}
+    if (
+        selenium_s is None
+        and debug_port is None
+        and playwright_s is None
+        and data.get("marionette_port") is None
+    ):
+        raise AdsPowerProtocolError(
+            "browser start response does not contain a usable connection endpoint"
+        )
+    known = {
+        "ws",
+        "debug_port",
+        "webdriver",
+        "selenium",
+        "playwright_cdp",
+        "marionette_port",
+        "marionette_host",
+    }
     return BrowserConnection(
         selenium_debugger_address=selenium_s,
         playwright_cdp_url=playwright_s,
@@ -76,21 +99,64 @@ def parse_browser_status(value: object) -> BrowserStatus:
     if status is None:
         raise AdsPowerProtocolError("browser status response is missing status")
     connection = None
-    if any(key in data for key in ("ws", "debug_port", "selenium", "playwright_cdp", "marionette_port")):
+    if any(
+        key in data
+        for key in ("ws", "debug_port", "selenium", "playwright_cdp", "marionette_port")
+    ):
         connection = parse_browser_connection(data)
-    return BrowserStatus(status, connection, collect_extra(data, {"status", "ws", "debug_port", "webdriver", "selenium", "playwright_cdp", "marionette_port", "marionette_host"}))
+    return BrowserStatus(
+        status,
+        connection,
+        collect_extra(
+            data,
+            {
+                "status",
+                "ws",
+                "debug_port",
+                "webdriver",
+                "selenium",
+                "playwright_cdp",
+                "marionette_port",
+                "marionette_host",
+            },
+        ),
+    )
 
 
 def parse_running_browser(value: object) -> RunningBrowser:
     data = require_object(value, field="running browser")
-    profile_id = require_id_string(first_present(data, "profile_id", "user_id", "id"), field="profile_id")
-    return RunningBrowser(profile_id, parse_browser_connection(data), collect_extra(data, {"profile_id", "user_id", "id", "ws", "debug_port", "webdriver", "selenium", "playwright_cdp", "marionette_port", "marionette_host"}))
+    profile_id = require_id_string(
+        first_present(data, "profile_id", "user_id", "id"),
+        field="profile_id",
+    )
+    return RunningBrowser(
+        profile_id,
+        parse_browser_connection(data),
+        collect_extra(
+            data,
+            {
+                "profile_id",
+                "user_id",
+                "id",
+                "ws",
+                "debug_port",
+                "webdriver",
+                "selenium",
+                "playwright_cdp",
+                "marionette_port",
+                "marionette_host",
+            },
+        ),
+    )
 
 
 def parse_cloud_browser_status(value: object) -> CloudBrowserStatus:
     data = require_object(value, field="cloud browser status")
     return CloudBrowserStatus(
-        require_id_string(first_present(data, "profile_id", "user_id", "id"), field="profile_id"),
+        require_id_string(
+            first_present(data, "profile_id", "user_id", "id"),
+            field="profile_id",
+        ),
         optional_string(data.get("status"), field="status") or "unknown",
         collect_extra(data, {"profile_id", "user_id", "id", "status"}),
     )

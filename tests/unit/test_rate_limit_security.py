@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import asyncio
-
 import pytest
 
 from adspower import AdsPowerRatePolicy, RateLimit
@@ -76,5 +74,5 @@ def test_redaction_covers_nested_secrets_and_proxy_urls() -> None:
     assert redacted["nested"]["fakey"] == "<redacted>"
     assert redacted["ok"] == "visible"
     assert redact_url_credentials("http://user:pass@example.test:8080/path") == (
-        "http://%3Credacted%3E@example.test:8080/path"
+        "http://<redacted>@example.test:8080/path"
     )
