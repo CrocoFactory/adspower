@@ -90,13 +90,13 @@ class SeleniumSession(AbstractContextManager[Any]):
                 raise ValueError("browser must be auto, chromium, chrome, or firefox")
             try:
                 if self.browser == "firefox":
-                    from selenium.webdriver.firefox.options import Options
-                    from selenium.webdriver.firefox.service import Service
-                    from selenium.webdriver.firefox.webdriver import WebDriver
+                    from selenium.webdriver.firefox.options import Options  # pyright: ignore[reportMissingImports]
+                    from selenium.webdriver.firefox.service import Service  # pyright: ignore[reportMissingImports]
+                    from selenium.webdriver.firefox.webdriver import WebDriver  # pyright: ignore[reportMissingImports]
                 else:
-                    from selenium.webdriver.chrome.options import Options
-                    from selenium.webdriver.chrome.service import Service
-                    from selenium.webdriver.chrome.webdriver import WebDriver
+                    from selenium.webdriver.chrome.options import Options  # pyright: ignore[reportMissingImports]
+                    from selenium.webdriver.chrome.service import Service  # pyright: ignore[reportMissingImports]
+                    from selenium.webdriver.chrome.webdriver import WebDriver  # pyright: ignore[reportMissingImports]
             except ImportError as exc:
                 raise ImportError("Install Selenium support with: pip install 'adspower[selenium]'") from exc
             options_class: Any = Options
@@ -189,7 +189,7 @@ class PlaywrightSession(AbstractContextManager[Any]):
     def __enter__(self) -> Any:
         try:
             try:
-                from playwright.sync_api import sync_playwright
+                from playwright.sync_api import sync_playwright  # pyright: ignore[reportMissingImports]
             except ImportError as exc:
                 raise ImportError("Install Playwright support with: pip install 'adspower[playwright]'") from exc
             if not self.connection.playwright_cdp:
@@ -242,7 +242,7 @@ class AsyncPlaywrightSession(AbstractAsyncContextManager[Any]):
     async def __aenter__(self) -> Any:
         try:
             try:
-                from playwright.async_api import async_playwright
+                from playwright.async_api import async_playwright  # pyright: ignore[reportMissingImports]
             except ImportError as exc:
                 raise ImportError("Install Playwright support with: pip install 'adspower[playwright]'") from exc
             if not self.connection.playwright_cdp:
