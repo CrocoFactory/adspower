@@ -116,7 +116,7 @@ async def test_async_resource_surface_and_parity() -> None:
 
         await client.profiles.delete("p1")
         await client.profiles.delete_many(["p1", "p2"])
-        await client.profiles.move(["p1"], "g1")
+        await client.profiles.move(["p1"], "1")
         assert (await client.profiles.cookies(profile_id="p1"))[0]["name"] == "a"
         assert (await client.profiles.user_agents(profile_ids=["p1"])) == {"p1": "UA"}
         assert (await client.profiles.new_fingerprint(profile_nos=["1"])) == {"p1": True}

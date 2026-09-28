@@ -87,9 +87,7 @@ class AsyncGroupsResource:
             data, item_keys=("list", "items"), parser=parse_group, requested_page=page, requested_page_size=page_size
         )
 
-    async def iter_all(
-        self, *, name: str | None = None, page: int = 1, page_size: int = 10
-    ) -> AsyncIterator[Group]:
+    async def iter_all(self, *, name: str | None = None, page: int = 1, page_size: int = 10) -> AsyncIterator[Group]:
         """Iterate groups across all pages."""
         while True:
             current = await self.list(name=name, page=page, page_size=page_size)

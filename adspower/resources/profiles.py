@@ -192,7 +192,12 @@ def _profile_list_body(
     page: int,
     page_size: int,
 ) -> JsonObject:
-    if isinstance(page, bool) or not isinstance(page, int) or isinstance(page_size, bool) or not isinstance(page_size, int):
+    if (
+        isinstance(page, bool)
+        or not isinstance(page, int)
+        or isinstance(page_size, bool)
+        or not isinstance(page_size, int)
+    ):
         raise AdsPowerValidationError("page and page_size must be integers")
     validate_page(page, page_size, maximum=200)
     if group_id is not None and not isinstance(group_id, str):

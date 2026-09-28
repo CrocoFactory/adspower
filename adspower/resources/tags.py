@@ -65,9 +65,7 @@ class TagsResource:
             requested_page_size=page_size,
         )
 
-    def iter_all(
-        self, *, ids: Sequence[str] | None = None, page: int = 1, page_size: int = 50
-    ) -> Iterator[BrowserTag]:
+    def iter_all(self, *, ids: Sequence[str] | None = None, page: int = 1, page_size: int = 50) -> Iterator[BrowserTag]:
         """Iterate browser tags across all pages."""
         while True:
             current = self.list(ids=ids, page=page, page_size=page_size)

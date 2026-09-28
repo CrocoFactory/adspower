@@ -52,7 +52,7 @@ def test_all_profile_operations_and_iteration() -> None:
         assert [p.profile_id for p in client.profiles.iter_all(page_size=1)] == ["p1", "p2"]
         assert client.profiles.find_by_name("exact").profile_id == "p1"
         client.profiles.delete_many(["p1", "p2"])
-        client.profiles.move(["p1", "p2"], "g1")
+        client.profiles.move(["p1", "p2"], "1")
         assert client.profiles.cookies(profile_no="1")[0]["value"] == "1"
         assert client.profiles.user_agents(profile_nos=["1"]) == ["UA1"]
         assert client.profiles.new_fingerprint(profile_ids=["p1"]) == {"done": True}
