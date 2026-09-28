@@ -42,6 +42,18 @@ pip install 'adspower[playwright]'
 pip install 'adspower[all]'
 ```
 
+## Agent skill
+
+This repository includes the `adspower-python` skill for agents that write,
+review, debug, or migrate code using this SDK. It captures the v3 API surface,
+browser lifecycle, pagination, topology, rate-limit, and safety conventions.
+
+Install it with:
+
+```bash
+npx skills add https://github.com/CrocoFactory/adspower/tree/master/skills/adspower-python
+```
+
 ## Quick start: Selenium
 
 ```python
