@@ -15,7 +15,9 @@
 
 Typed synchronous and asynchronous clients for the current AdsPower Local API
 V2, with safe Selenium and Playwright attachment. The SDK supports local,
-Docker and private remote AdsPower deployments.
+Docker and private remote AdsPower deployments. Remote Selenium attachment
+requires a reachable debugger `/json/version` endpoint or an explicitly
+configured matching driver service.
 
 > Version 3 is a breaking release. The old `adspower.sync_api` and
 > `adspower.async_api` packages were removed; use the clients shown below.
@@ -37,6 +39,7 @@ Docker and private remote AdsPower deployments.
 - Python 3.10 or newer (through 3.15).
 - AdsPower with Local API enabled and accessible to your account.
 - Selenium and/or Playwright only when browser automation is needed.
+- Playwright 1.61 or newer when the Playwright extra is installed.
 
 AdsPower availability, permissions and rate limits depend on the installed
 application version and account. See the [official Local API documentation](https://localapi-doc-en.adspower.com/).
@@ -201,7 +204,7 @@ manual cleanup options.
 ```bash
 poetry install --all-extras
 poetry run ruff check adspower tests
-poetry run pytest -m "not integration" --cov --cov-fail-under=85
+poetry run pytest -m "not integration" --cov --cov-fail-under=90
 poetry build
 ```
 

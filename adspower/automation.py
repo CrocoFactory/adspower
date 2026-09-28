@@ -1,12 +1,46 @@
 from __future__ import annotations
 
+import json
 import os
+import re
 from collections.abc import Mapping
 from contextlib import AbstractAsyncContextManager, AbstractContextManager
 from types import TracebackType
 from typing import Any, Awaitable, Callable, Literal
+from urllib.parse import urlsplit, urlunsplit
+from urllib.request import urlopen
 
 from .models import BrowserConnection
+
+
+def _remote_chromium_version(debugger_address: str) -> str:
+    """Read the running remote Chromium version for Selenium Manager."""
+    parsed = urlsplit(debugger_address if "://" in debugger_address else f"//{debugger_address}")
+    if not parsed.hostname or not parsed.port:
+        raise RuntimeError(f"Invalid remote AdsPower Selenium debugger address: {debugger_address!r}")
+    host = f"[{parsed.hostname}]" if ":" in parsed.hostname else parsed.hostname
+    version_url = urlunsplit(("http", f"{host}:{parsed.port}", "/json/version", "", ""))
+    try:
+        with urlopen(version_url, timeout=2) as response:  # noqa: S310 - host comes from the user's AdsPower config
+            payload = json.load(response)
+    except Exception as exc:
+        raise RuntimeError(
+            "Could not query the remote AdsPower browser version at "
+            f"{version_url}; pass a matching Selenium service explicitly"
+        ) from exc
+    browser = payload.get("Browser") if isinstance(payload, Mapping) else None
+    match = re.search(r"(?:Chrome|Chromium)/([0-9]+(?:\.[0-9]+)*)", str(browser or ""))
+    if not match:
+        raise RuntimeError(
+            "The remote AdsPower /json/version response did not contain a Chromium version; "
+            "pass a matching Selenium service explicitly"
+        )
+    return match.group(1).split(".", 1)[0]
+
+
+def _is_loopback_debugger(debugger_address: str) -> bool:
+    parsed = urlsplit(debugger_address if "://" in debugger_address else f"//{debugger_address}")
+    return parsed.hostname in {"127.0.0.1", "localhost", "::1"}
 
 
 def _playwright_connect_kwargs(
@@ -34,7 +68,9 @@ class SeleniumSession(AbstractContextManager[Any]):
         self.start_maximized = start_maximized
         self.page_load_strategy = page_load_strategy
         self.options = options
-        self.browser = "firefox" if browser == "auto" and connection.marionette_port else ("chromium" if browser in ("auto", "chrome") else browser)
+        # Firefox attachment is experimental and must be selected explicitly;
+        # a synthetic or stale marionette_port must not change the default.
+        self.browser = "chromium" if browser in ("auto", "chrome") else browser
         self.service = service
         self.service_kwargs = dict(service_kwargs or {})
         self.webdriver_kwargs = dict(webdriver_kwargs or {})
@@ -85,6 +121,12 @@ class SeleniumSession(AbstractContextManager[Any]):
                 service_kwargs["service_args"] = args
             elif self.connection.webdriver and os.path.isfile(self.connection.webdriver) and "executable_path" not in service_kwargs:
                 service_kwargs["executable_path"] = self.connection.webdriver
+            elif self.connection.selenium and not _is_loopback_debugger(self.connection.selenium):
+                # A path such as /remote/adspower/chromedriver is commonly
+                # meaningful only inside the AdsPower container. Selenium Manager
+                # otherwise sees only the local machine and may choose a driver
+                # for a different locally installed Chrome.
+                options.browser_version = _remote_chromium_version(self.connection.selenium)
             service = Service(**service_kwargs)
         self.driver = WebDriver(service=service, options=options, **self.webdriver_kwargs)
         if self.start_maximized:

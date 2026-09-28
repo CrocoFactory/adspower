@@ -26,9 +26,13 @@ with session.selenium() as driver:
 ```
 
 The adapter uses the debugger address returned by AdsPower. A returned WebDriver
-path is used only when that path exists in the Python process filesystem; this
-keeps Docker and remote AdsPower setups working with Selenium Manager. The
-adapter never starts AdsPower Chromium as an ordinary Selenium-managed browser.
+path is used only when that path exists in the Python process filesystem. For a
+remote debugger without a locally available driver, the adapter queries
+`/json/version` and passes the remote Chromium major version to Selenium
+Manager. If that endpoint cannot be reached or does not report a Chromium
+version, attachment fails with an instruction to provide a matching
+`service=` explicitly. The adapter never starts AdsPower Chromium as an
+ordinary Selenium-managed browser.
 
 Headless mode belongs to the AdsPower start request:
 
@@ -65,8 +69,9 @@ with session.selenium(
 
 Use `service_kwargs` when constructing a `Service` object is more convenient.
 `service` and `service_kwargs` cannot be supplied together. Firefox attachment
-is selected with `browser="firefox"` or automatically when AdsPower returns a
-Marionette port:
+is experimental and should only be used after verifying that the target
+AdsPower version returns a real `marionette_port`; select it with
+`browser="firefox"`:
 
 ```python
 session = client.browsers.start(profile_no="42")
@@ -92,7 +97,9 @@ launch Playwright's bundled browser.
 Playwright's CDP attachment applies to Chromium-based browsers and may expose
 fewer capabilities than a browser launched directly through Playwright.
 
-Current Playwright connection options and future options are both supported:
+The SDK requires Playwright 1.61 or newer because the typed connection options
+include `is_local`, `no_defaults` and `artifacts_dir`. Current Playwright
+connection options and future options are both supported:
 
 ```python
 with session.playwright(

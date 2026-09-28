@@ -9,13 +9,23 @@ from .exceptions import AdsPowerValidationError
 from .security import redact_sensitive
 
 
+def _format_host(host: str) -> str:
+    """Format a host for an endpoint authority, including IPv6 literals."""
+    if ":" in host and not host.startswith("["):
+        return f"[{host}]"
+    return host
+
+
 class ProxySoftware(str, Enum):
     BRIGHTDATA = "brightdata"
     BRIGHTAUTO = "brightauto"
     OXYLABS_AUTO = "oxylabsauto"
+    NINE_TWO_TWO_S5_AUTO = "922S5auto"
+    NINE_TWO_TWO_S5_AUTH = "922S5auth"
     IPFOXY_AUTO = "ipfoxyauto"
     KOOK_AUTO = "kookauto"
     LUMIPROXY_AUTO = "lumiproxyauto"
+    SSH = "ssh"
     OTHER = "other"
     NO_PROXY = "no_proxy"
 
@@ -135,7 +145,7 @@ class BrowserConnection:
         if selenium and api_host not in loopback_hosts:
             parsed_selenium = urlsplit(f"//{selenium}")
             if parsed_selenium.hostname in loopback_hosts and parsed_selenium.port:
-                selenium = f"{api_host}:{parsed_selenium.port}"
+                selenium = f"{_format_host(api_host)}:{parsed_selenium.port}"
         if playwright and api_host not in loopback_hosts:
             parsed_playwright = urlsplit(str(playwright))
             if parsed_playwright.hostname in loopback_hosts:
@@ -143,14 +153,14 @@ class BrowserConnection:
                 playwright = urlunsplit(
                     (
                         parsed_playwright.scheme,
-                        f"{api_host}{port}",
+                        f"{_format_host(api_host)}{port}",
                         parsed_playwright.path,
                         parsed_playwright.query,
                         parsed_playwright.fragment,
                     )
                 )
         if debug_port is not None and not selenium:
-            selenium = f"{api_host}:{debug_port}"
+            selenium = f"{_format_host(api_host)}:{debug_port}"
         known = {"ws", "debug_port", "webdriver", "selenium", "playwright_cdp", "marionette_port"}
         return cls(
             selenium=str(selenium) if selenium else None,

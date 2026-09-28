@@ -119,7 +119,7 @@ pip install 'adspower[playwright]'
 ```
 
 Supported ranges are HTTPX 0.27.2–0.x, Selenium 4.20–4.x, and Playwright
-1.45–1.x. CI checks minimum and latest compatible dependency sets.
+1.61–1.x. CI checks minimum and latest compatible dependency sets.
 
 ## References
 

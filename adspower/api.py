@@ -24,16 +24,22 @@ def _items(data: Any) -> list[Mapping[str, Any]]:
     return []
 
 
-def _v2_list_payload(page: int, page_size: int, filters: Mapping[str, Any]) -> tuple[dict[str, Any], str | None]:
+def _v2_list_payload(page: int, page_size: int, filters: Mapping[str, Any]) -> dict[str, Any]:
     request_filters = dict(filters)
-    name = request_filters.pop("name", None)
     for key in ("profile_id", "profile_no"):
         if key in request_filters and isinstance(request_filters[key], str):
             request_filters[key] = [request_filters[key]]
-    return _compact({"page": page, "limit": page_size, **request_filters}), name
+    return _compact({"page": page, "limit": page_size, **request_filters})
+
+
+def _require_sequence(value: Sequence[Any], *, name: str) -> Sequence[Any]:
+    if isinstance(value, (str, bytes)):
+        raise AdsPowerValidationError(f"{name} must be a sequence of values, not a string")
+    return value
 
 
 def _ids(values: Sequence[str], *, name: str, maximum: int) -> list[str]:
+    _require_sequence(values, name=name)
     result = [str(value) for value in values]
     if not 1 <= len(result) <= maximum:
         raise AdsPowerValidationError(f"{name} must contain between 1 and {maximum} items")
@@ -86,10 +92,9 @@ class ProfilesAPI:
     def list(self, *, page: int = 1, page_size: int = 100, **filters: Any) -> list[Profile]:
         if not 1 <= page_size <= 100:
             raise AdsPowerValidationError("profile page_size must be between 1 and 100")
-        payload, name = _v2_list_payload(page, page_size, filters)
+        payload = _v2_list_payload(page, page_size, filters)
         data = self._transport.request("POST", "/api/v2/browser-profile/list", json=payload)
-        profiles = [Profile.from_api(item) for item in _items(data)]
-        return profiles if name is None else [profile for profile in profiles if profile.name == name]
+        return [Profile.from_api(item) for item in _items(data)]
 
     def find_by_name(self, name: str, *, page_size: int = 100, max_pages: int | None = None) -> Profile | None:
         matches = self.find_all_by_name(name, page_size=page_size, max_pages=max_pages)
@@ -98,7 +103,7 @@ class ProfilesAPI:
     def find_all_by_name(self, name: str, *, page_size: int = 100, max_pages: int | None = None) -> list[Profile]:
         page, matches = 1, []
         while max_pages is None or page <= max_pages:
-            profiles = self.list(page=page, page_size=page_size)
+            profiles = self.list(page=page, page_size=page_size, name=name, name_filter="include")
             matches.extend(profile for profile in profiles if profile.name == name)
             if len(profiles) < page_size:
                 break
@@ -121,6 +126,7 @@ class ProfilesAPI:
         self._transport.request("POST", "/api/v1/user/regroup", json={"user_ids": _ids(profile_ids, name="profile_ids", maximum=100), "group_id": str(group_id)})
 
     def delete_cache(self, profile_ids: Sequence[str], cache_types: Sequence[CacheType | str]) -> None:
+        _require_sequence(cache_types, name="cache_types")
         self._transport.request("POST", "/api/v2/browser-profile/delete-cache", json={"profile_id": _ids(profile_ids, name="profile_ids", maximum=100), "type": [str(item) for item in cache_types]})
 
     def cookies(self, *, profile_id: str | None = None, profile_no: str | None = None) -> list[dict[str, Any]]:
@@ -128,6 +134,8 @@ class ProfilesAPI:
         return _cookies(data)
 
     def share(self, profile_ids: Sequence[str], receiver: str, *, content: Sequence[str] | None = None, share_type: int = 1) -> dict[str, Any]:
+        if content is not None:
+            _require_sequence(content, name="content")
         data = self._transport.request("POST", "/api/v2/browser-profile/share", json=_compact({"profile_id": _ids(profile_ids, name="profile_ids", maximum=200), "receiver": receiver, "content": list(content) if content is not None else None, "share_type": share_type}))
         return dict(data) if isinstance(data, Mapping) else {"data": data}
 
@@ -150,10 +158,9 @@ class AsyncProfilesAPI:
     async def list(self, *, page: int = 1, page_size: int = 100, **filters: Any) -> list[Profile]:
         if not 1 <= page_size <= 100:
             raise AdsPowerValidationError("profile page_size must be between 1 and 100")
-        payload, name = _v2_list_payload(page, page_size, filters)
+        payload = _v2_list_payload(page, page_size, filters)
         data = await self._transport.request("POST", "/api/v2/browser-profile/list", json=payload)
-        profiles = [Profile.from_api(item) for item in _items(data)]
-        return profiles if name is None else [profile for profile in profiles if profile.name == name]
+        return [Profile.from_api(item) for item in _items(data)]
 
     async def find_by_name(self, name: str, *, page_size: int = 100, max_pages: int | None = None) -> Profile | None:
         matches = await self.find_all_by_name(name, page_size=page_size, max_pages=max_pages)
@@ -162,7 +169,7 @@ class AsyncProfilesAPI:
     async def find_all_by_name(self, name: str, *, page_size: int = 100, max_pages: int | None = None) -> list[Profile]:
         page, matches = 1, []
         while max_pages is None or page <= max_pages:
-            profiles = await self.list(page=page, page_size=page_size)
+            profiles = await self.list(page=page, page_size=page_size, name=name, name_filter="include")
             matches.extend(profile for profile in profiles if profile.name == name)
             if len(profiles) < page_size:
                 break
@@ -185,6 +192,7 @@ class AsyncProfilesAPI:
         await self._transport.request("POST", "/api/v1/user/regroup", json={"user_ids": _ids(profile_ids, name="profile_ids", maximum=100), "group_id": str(group_id)})
 
     async def delete_cache(self, profile_ids: Sequence[str], cache_types: Sequence[CacheType | str]) -> None:
+        _require_sequence(cache_types, name="cache_types")
         await self._transport.request("POST", "/api/v2/browser-profile/delete-cache", json={"profile_id": _ids(profile_ids, name="profile_ids", maximum=100), "type": [str(item) for item in cache_types]})
 
     async def cookies(self, *, profile_id: str | None = None, profile_no: str | None = None) -> list[dict[str, Any]]:
@@ -192,6 +200,8 @@ class AsyncProfilesAPI:
         return _cookies(data)
 
     async def share(self, profile_ids: Sequence[str], receiver: str, *, content: Sequence[str] | None = None, share_type: int = 1) -> dict[str, Any]:
+        if content is not None:
+            _require_sequence(content, name="content")
         data = await self._transport.request("POST", "/api/v2/browser-profile/share", json=_compact({"profile_id": _ids(profile_ids, name="profile_ids", maximum=200), "receiver": receiver, "content": list(content) if content is not None else None, "share_type": share_type}))
         return dict(data) if isinstance(data, Mapping) else {"data": data}
 
@@ -237,7 +247,21 @@ class ProxiesAPI:
         self._transport = transport
 
     def create(self, *, type: str, host: str, port: str | int, user: str | None = None, password: str | None = None, **fields: Any) -> list[str]:
-        data = self._transport.request("POST", "/api/v2/proxy-list/create", json=_compact({"proxy_type": type, "proxy_host": host, "proxy_port": str(port), "proxy_user": user, "proxy_password": password, **fields}))
+        return self.create_many([{**fields, "type": type, "host": host, "port": str(port), "user": user, "password": password}])
+
+    def create_many(self, proxies: Sequence[Mapping[str, Any]]) -> list[str]:
+        _require_sequence(proxies, name="proxies")
+        if not 1 <= len(proxies) <= 500:
+            raise AdsPowerValidationError("proxies must contain between 1 and 500 items")
+        items: list[dict[str, Any]] = []
+        for index, proxy in enumerate(proxies):
+            if not isinstance(proxy, Mapping):
+                raise AdsPowerValidationError(f"proxies[{index}] must be a mapping")
+            item = dict(proxy)
+            if "port" in item and item["port"] is not None:
+                item["port"] = str(item["port"])
+            items.append(_compact(item))
+        data = self._transport.request("POST", "/api/v2/proxy-list/create", json=items)
         ids = data.get("proxy_id", data.get("proxy_ids", data.get("id", []))) if isinstance(data, Mapping) else data
         return [str(item) for item in (ids if isinstance(ids, list) else [ids]) if item is not None]
 
@@ -266,7 +290,21 @@ class AsyncProxiesAPI:
         self._transport = transport
 
     async def create(self, *, type: str, host: str, port: str | int, user: str | None = None, password: str | None = None, **fields: Any) -> list[str]:
-        data = await self._transport.request("POST", "/api/v2/proxy-list/create", json=_compact({"proxy_type": type, "proxy_host": host, "proxy_port": str(port), "proxy_user": user, "proxy_password": password, **fields}))
+        return await self.create_many([{**fields, "type": type, "host": host, "port": str(port), "user": user, "password": password}])
+
+    async def create_many(self, proxies: Sequence[Mapping[str, Any]]) -> list[str]:
+        _require_sequence(proxies, name="proxies")
+        if not 1 <= len(proxies) <= 500:
+            raise AdsPowerValidationError("proxies must contain between 1 and 500 items")
+        items: list[dict[str, Any]] = []
+        for index, proxy in enumerate(proxies):
+            if not isinstance(proxy, Mapping):
+                raise AdsPowerValidationError(f"proxies[{index}] must be a mapping")
+            item = dict(proxy)
+            if "port" in item and item["port"] is not None:
+                item["port"] = str(item["port"])
+            items.append(_compact(item))
+        data = await self._transport.request("POST", "/api/v2/proxy-list/create", json=items)
         ids = data.get("proxy_id", data.get("proxy_ids", data.get("id", []))) if isinstance(data, Mapping) else data
         return [str(item) for item in (ids if isinstance(ids, list) else [ids]) if item is not None]
 

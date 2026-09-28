@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import json
 import sys
 import types
@@ -98,6 +99,81 @@ def test_validation_and_playwright_future_options() -> None:
         _playwright_connect_kwargs(timeout=1, connect_kwargs={"timeout": 2})
 
 
+def test_proxy_create_uses_current_array_contract() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return response({"code": 0, "data": {"proxy_ids": ["px1"]}})
+
+    with AdsPowerClient(transport=httpx.MockTransport(handler)) as client:
+        assert client.proxies.create(type="http", host="127.0.0.1", port=8080) == ["px1"]
+        assert client.proxies.create_many([
+            {"type": "https", "host": "proxy.example", "port": 8443, "remark": "second"},
+        ]) == ["px1"]
+
+    assert json.loads(requests[0].content) == [{"type": "http", "host": "127.0.0.1", "port": "8080"}]
+    assert json.loads(requests[1].content) == [{"type": "https", "host": "proxy.example", "port": "8443", "remark": "second"}]
+    with AdsPowerClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(AdsPowerValidationError):
+            client.proxies.create_many([])
+        with pytest.raises(AdsPowerValidationError):
+            client.proxies.create_many([{}] * 501)
+
+
+def test_profile_name_filters_are_sent_to_ads_power() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return response({"code": 0, "data": {"list": [{"profile_id": "p", "name": "needle"}]}})
+
+    with AdsPowerClient(transport=httpx.MockTransport(handler)) as client:
+        assert client.profiles.list(name="needle", name_filter="include")[0].id == "p"
+
+    assert json.loads(requests[0].content) == {
+        "page": 1,
+        "limit": 100,
+        "name": "needle",
+        "name_filter": "include",
+    }
+
+
+def test_string_batch_arguments_are_rejected() -> None:
+    with AdsPowerClient(transport=httpx.MockTransport(lambda _: response({"code": 0, "data": {}}))) as client:
+        with pytest.raises(AdsPowerValidationError):
+            client.profiles.delete_many("abc")
+        with pytest.raises(AdsPowerValidationError):
+            client.proxies.delete_many("abc")
+        with pytest.raises(AdsPowerValidationError):
+            client.profiles.delete_cache(["abc"], "cookie")
+        with pytest.raises(AdsPowerValidationError):
+            client.profiles.share(["abc"], "receiver", content="name")
+
+
+def test_ipv6_remote_endpoints_are_bracketed() -> None:
+    connection = BrowserConnection.from_api(
+        {
+            "ws": {
+                "selenium": "127.0.0.1:9222",
+                "puppeteer": "ws://127.0.0.1:9222/devtools/browser/id",
+            },
+        },
+        base_url="http://[2001:db8::1]:50325",
+    )
+    assert connection.selenium == "[2001:db8::1]:9222"
+    assert connection.playwright_cdp == "ws://[2001:db8::1]:9222/devtools/browser/id"
+
+
+def test_minimum_playwright_has_declared_connection_options() -> None:
+    playwright = pytest.importorskip("playwright")
+    from playwright.sync_api import BrowserType
+
+    del playwright
+    parameters = inspect.signature(BrowserType.connect_over_cdp).parameters
+    assert {"is_local", "no_defaults", "artifacts_dir"}.issubset(parameters)
+
+
 def _install_fake_selenium(monkeypatch: pytest.MonkeyPatch) -> tuple[type, type, type]:
     class Options:
         def __init__(self) -> None:
@@ -162,6 +238,39 @@ def test_selenium_configuration_and_cleanup(monkeypatch: pytest.MonkeyPatch) -> 
     session.close()
     assert driver.quit_called and stopped == [True]
     assert driver_type.instances
+
+
+def test_remote_selenium_uses_ads_power_browser_version(monkeypatch: pytest.MonkeyPatch) -> None:
+    _, _, _ = _install_fake_selenium(monkeypatch)
+    import adspower.automation as automation
+
+    class Response:
+        def __enter__(self) -> "Response":
+            return self
+
+        def __exit__(self, *_: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return b'{"Browser":"Chrome/145.0.1.2"}'
+
+    seen: list[tuple[str, float]] = []
+
+    def fake_urlopen(url: str, timeout: float) -> Response:
+        seen.append((url, timeout))
+        return Response()
+
+    monkeypatch.setattr(automation, "urlopen", fake_urlopen)
+    from adspower.automation import SeleniumSession
+
+    session = SeleniumSession(
+        BrowserConnection(selenium="remote.example:9222", webdriver="/remote/adspower/chromedriver"),
+        stop=lambda: None,
+    )
+    driver = session.__enter__()
+    assert driver.kwargs["options"].browser_version == "145"
+    assert seen == [("http://remote.example:9222/json/version", 2)]
+    session.close()
 
 
 def test_firefox_selenium_uses_marionette_flags(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -308,6 +417,30 @@ async def test_async_profile_operations_and_validation() -> None:
         assert (await client.profiles.update("p", refresh=True)).id == "p"
         with pytest.raises(AdsPowerValidationError):
             await client.profiles.list(page_size=101)
+
+
+@pytest.mark.asyncio
+async def test_async_proxy_create_and_batch_validation() -> None:
+    requests: list[httpx.Request] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return response({"code": 0, "data": {"proxy_ids": ["px1"]}})
+
+    async with AsyncAdsPowerClient(transport=httpx.MockTransport(handler)) as client:
+        assert await client.proxies.create(type="http", host="127.0.0.1", port=8080) == ["px1"]
+        assert await client.proxies.create_many([
+            {"type": "https", "host": "proxy.example", "port": 8443},
+        ]) == ["px1"]
+        with pytest.raises(AdsPowerValidationError):
+            await client.proxies.create_many("abc")
+        with pytest.raises(AdsPowerValidationError):
+            await client.profiles.delete_many("abc")
+        with pytest.raises(AdsPowerValidationError):
+            await client.profiles.delete_cache(["abc"], "cookie")
+
+    assert json.loads(requests[0].content) == [{"type": "http", "host": "127.0.0.1", "port": "8080"}]
+    assert json.loads(requests[1].content) == [{"type": "https", "host": "proxy.example", "port": "8443"}]
 
 
 @pytest.mark.asyncio

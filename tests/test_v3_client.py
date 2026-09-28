@@ -221,7 +221,7 @@ async def test_async_parity_and_exact_contract() -> None:
     assert profiles[0].extra["new"] == 1
     assert requests[0].headers["Authorization"] == "Bearer async-secret"
     assert requests[0].url.path == "/api/v2/browser-profile/list"
-    assert json.loads(requests[0].content) == {"page": 1, "limit": 100}
+    assert json.loads(requests[0].content) == {"page": 1, "limit": 100, "name": "test"}
 
 
 def test_sync_limiter_with_fake_clock() -> None:
@@ -413,6 +413,8 @@ def test_selenium_adapter_uses_endpoint_without_headless(monkeypatch: pytest.Mon
     import selenium.webdriver.chrome.service
     import selenium.webdriver.chrome.webdriver
 
+    import adspower.automation as automation
+
     calls: list[object] = []
 
     class Options:
@@ -442,6 +444,18 @@ def test_selenium_adapter_uses_endpoint_without_headless(monkeypatch: pytest.Mon
     monkeypatch.setattr(selenium.webdriver.chrome.options, "Options", Options)
     monkeypatch.setattr(selenium.webdriver.chrome.service, "Service", Service)
     monkeypatch.setattr(selenium.webdriver.chrome.webdriver, "WebDriver", Driver)
+
+    class VersionResponse:
+        def __enter__(self) -> "VersionResponse":
+            return self
+
+        def __exit__(self, *_: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return b'{"Browser":"Chrome/145.0.1.2"}'
+
+    monkeypatch.setattr(automation, "urlopen", lambda *_args, **_kwargs: VersionResponse())
     adapter = SeleniumSession(
         BrowserConnection(selenium="remote:9222", webdriver="/driver"),
         stop=lambda: calls.append("stop"),

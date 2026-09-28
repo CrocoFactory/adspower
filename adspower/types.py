@@ -8,16 +8,19 @@ ProxySoft = str
 ProfileProxyType = Literal["http", "https", "socks5"]
 StoredProxyType = Literal["http", "https", "socks5", "ssh"]
 ProxyType = ProfileProxyType
-WebRtcType = Literal['forward', 'proxy', 'local', 'disabled']
+WebRtcType = Literal['forward', 'proxy', 'local', 'disabled', 'disableUDP'] | str
 LocationType = Literal['ask', 'allow', 'block']
 FlashType = Literal['allow', 'block']
-DeviceNameType = Literal[0, 1, 2]
-MediaDeviceType = Literal[0, 1, 2]
-GPUType = Literal[0, 1, 2]
-WebGLVersion = Literal[0, 2, 3]
+DeviceNameType = Literal['0', '1', '2'] | str
+MediaDeviceType = Literal['0', '1', '2'] | str
+GPUType = Literal['0', '1', '2'] | str
+WebGLVersion = Literal['0', '2', '3'] | str
 AdsPowerBool = Literal[0, 1, "0", "1"]
 IntBool = AdsPowerBool
 CacheType = Literal["local_storage", "indexeddb", "extension_cache", "cookie", "history", "image_file"]
+DoNotTrack = Literal["default", "true", "false"] | str
+HardwareConcurrency = Literal["default", "2", "4", "6", "8", "16", "32"] | str
+DeviceMemory = Literal["default", "2", "4", "6", "8"] | str
 
 
 class ProxyConfig(TypedDict, total=False):
@@ -38,24 +41,23 @@ class ProxyConfig(TypedDict, total=False):
 class WebGLConfig(TypedDict):
     unmasked_vendor: str
     unmasked_renderer: str
-    webgpu: dict[str, Any]
+    webgpu: NotRequired[dict[str, Any]]
 
 
 class MediaDeviceConfig(TypedDict):
-    audioinput_num: int
-    videoinput_num: int
-    audiooutput_num: int
+    audioinput_num: str
+    videoinput_num: str
+    audiooutput_num: str
 
 
-class RandomUserAgent(TypedDict):
-    ua_browser: list[str]
+class RandomUserAgent(TypedDict, total=False):
     ua_version: list[str]
     ua_system_version: list[str]
 
 
 class MacAddressConfig(TypedDict):
-    model: int
-    address: str
+    model: Literal['0', '1', '2'] | str
+    address: NotRequired[str]
 
 
 class BrowserKernelConfig(TypedDict):
@@ -84,12 +86,12 @@ class FingerprintConfig(TypedDict):
     webgl: NotRequired[WebGLVersion]
     webgl_config: NotRequired[WebGLConfig]
     audio: NotRequired[IntBool]
-    do_not_track: NotRequired[IntBool]
-    hardware_concurrency: NotRequired[int]
-    device_memory: NotRequired[int]
+    do_not_track: NotRequired[DoNotTrack]
+    hardware_concurrency: NotRequired[HardwareConcurrency]
+    device_memory: NotRequired[DeviceMemory]
     flash: NotRequired[IntBool | FlashType]
     scan_port_type: NotRequired[IntBool]
-    allow_scan_ports: NotRequired[list[int]]
+    allow_scan_ports: NotRequired[list[str]]
     media_devices: NotRequired[MediaDeviceType]
     media_devices_num: NotRequired[MediaDeviceConfig]
     client_rects: NotRequired[IntBool]
