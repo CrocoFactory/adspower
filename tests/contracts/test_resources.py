@@ -73,7 +73,7 @@ def test_resource_namespaces_cover_verified_endpoints() -> None:
     "config",
     [
         StoredProxyConfig("http", "127.0.0.1", 0),
-        StoredProxyConfig("https", "::1", "65536"),
+        StoredProxyConfig("https", "::1", "65535"),
         StoredProxyConfig("ssh", "host", 22),
         StoredProxyConfig("socks5", "host", 1080),
     ],
