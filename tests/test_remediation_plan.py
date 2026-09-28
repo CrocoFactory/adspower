@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 
 import httpx
@@ -14,9 +15,9 @@ from adspower import (
     AsyncAdsPowerClient,
     RateLimit,
 )
+from adspower.config import ClientConfig
 from adspower.exceptions import AuthenticationError, RateLimitError
 from adspower.transport import SyncTransport
-from adspower.config import ClientConfig
 
 
 def response(payload: object, status: int = 200, headers: dict[str, str] | None = None) -> httpx.Response:
@@ -264,7 +265,6 @@ def test_public_exception_hierarchy_is_exported_from_package_root() -> None:
 
 @pytest.mark.asyncio
 async def test_async_playwright_cleanup_preserves_task_cancellation() -> None:
-    import asyncio
     from adspower.automation import AsyncPlaywrightSession
     from adspower.models import BrowserConnection
 
